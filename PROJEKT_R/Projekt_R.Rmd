@@ -2,9 +2,95 @@
 title: "Projekt R"
 author: "Wojciech Toporowski, 145381"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  html_document:
+    toc: true
+    toc_float: true
 ---
+
+# Zastosowane biblioteki i powtarzalność
+```{r libraries}
+library(DT)
+library(dplyr)
+
+my_seed <- 145381  # numer indeksu jako seed dla operacji losowych
+```
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+prettyTable <- function(table_df, round_digits=2) {
+    DT::datatable(table_df, style="bootstrap", filter = "top", rownames = FALSE, extensions = "Buttons", options = list(dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'))) %>% formatRound(names(dplyr::select_if(table_df, is.numeric)), round_digits)
+}
+
 ```
+# Dane
+## Wczytanie danych
+
+```{r data_read}
+inventories <- read.csv("data/inventories.csv")
+
+# zestawy
+inventory_sets <- read.csv("data/inventory_sets.csv")
+
+sets<- read.csv("data/sets.csv")
+sets <- rename(sets, set_name = name)
+
+themes <- read.csv("data/themes.csv")%>%rename(theme_id = id, theme_name = name, parent_theme_id = parent_id)
+sets_df <- inner_join(themes, sets, by='theme_id')%>%mutate(theme_name=factor(theme_name),set_name=factor(set_name))
+sets_df <- inner_join(inventories, sets_df, by='set_num')%>%select(-(img_url))
+
+# minifigurki
+minifigs <- read.csv("data/minifigs.csv")
+inventory_minifigs <- read.csv("data/inventory_minifigs.csv")
+
+figs <- inner_join(minifigs, inventory_minifigs, by='fig_num')%>%rename(fig_name = name, fig_num_parts = num_parts, fig_quantity = quantity, fig_img_url = img_url)%>%select(-fig_img_url)
+
+figs_df <- inner_join(inventories, figs, join_by(id == inventory_id))%>%mutate(fig_name=factor(fig_name))
+
+# parts
+inventory_parts <- read.csv("data/inventory_parts.csv")
+parts_df <- inner_join(inventories, inventory_parts, join_by(id == inventory_id))%>%rename(part_quantity = quantity)
+
+colors <- read.csv("data/colors.csv")%>%rename(color_name = name)%>%mutate(color_name=factor(color_name))
+parts_df <- inner_join(parts_df, colors, join_by(color_id == id))
+
+parts <- read.csv("data/parts.csv")%>%rename(part_name = name)
+parts_categories <- read.csv("data/part_categories.csv")%>%rename(part_category_name = name)%>%mutate(part_category_name = factor(part_category_name))
+parts_join_cat <- inner_join(parts, parts_categories, join_by(part_cat_id == id))
+parts_df <- inner_join(parts_df, parts_join_cat, by='part_num')
+rm(parts_join_cat)
+
+parts_df <- mutate(parts_df, is_spare=factor(is_spare), part_material = factor(part_material), is_trans = factor(is_trans),part_name = factor(part_name) )%>%select(-(img_url))
+
+```
+## Podsumownie danych i ich statystyki
+### Zestawy
+```{r data_stats_sets}
+prettyTable(head(sets_df))
+summary(sets_df)
+```
+### Minigurki
+```{r data_stats_figs}
+prettyTable(head(figs_df))
+summary(figs_df)
+```
+### Części
+```{r data_stats_parts}
+prettyTable(head(parts_df))
+summary(parts_df)
+```
+
+## Przetworzenie brakujących danych
+Aby uniknąć nieprzyjmeności związanych z brakującymi danymi musimy przeprowadzić analizę, w jakich kolumnach takie dane się znajdują:
+```{r data_cleaning}
+names(which(colSums(is.na(sets_df))> 0))
+names(which(colSums(is.na(figs_df))> 0))
+names(which(colSums(is.na(parts_df))> 0))
+```
+Powyższy wynik informuje nas, że wartości puste występują jedynie w kolumnie parent_theme_id w tabeli zestawów. Nie stanowi to problemu oraz jest to wynik oczekiwany, ze względu na zastosowanie połączeń inner join.
+
+
+
+
+
+
