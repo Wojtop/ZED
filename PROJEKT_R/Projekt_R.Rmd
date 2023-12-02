@@ -12,6 +12,8 @@ output:
 ```{r libraries}
 library(DT)
 library(dplyr)
+library(ggplot2)
+library(plotly)
 
 my_seed <- 145381  # numer indeksu jako seed dla operacji losowych
 ```
@@ -26,7 +28,7 @@ prettyTable <- function(table_df, round_digits=2) {
 # Dane
 ## Wczytanie danych
 
-```{r data_read}
+```{r data_read, cache=TRUE}
 inventories <- read.csv("data/inventories.csv")
 
 # zestawy
@@ -34,6 +36,9 @@ inventory_sets <- read.csv("data/inventory_sets.csv")
 
 sets<- read.csv("data/sets.csv")
 sets <- rename(sets, set_name = name)
+
+set_num_year <- select(sets, set_num, year)
+t <-group_by(set_num_year, set_num)%>%summarise(all = n(), dist = n_distinct(set_num))%>%filter(dist>1 | all > 1)   # set_num są unikalne
 
 themes <- read.csv("data/themes.csv")%>%rename(theme_id = id, theme_name = name, parent_theme_id = parent_id)
 sets_df <- inner_join(themes, sets, by='theme_id')%>%mutate(theme_name=factor(theme_name),set_name=factor(set_name))
@@ -46,6 +51,7 @@ inventory_minifigs <- read.csv("data/inventory_minifigs.csv")
 figs <- inner_join(minifigs, inventory_minifigs, by='fig_num')%>%rename(fig_name = name, fig_num_parts = num_parts, fig_quantity = quantity, fig_img_url = img_url)%>%select(-fig_img_url)
 
 figs_df <- inner_join(inventories, figs, join_by(id == inventory_id))%>%mutate(fig_name=factor(fig_name))
+figs_df<-left_join(figs_df, set_num_year, by='set_num')
 
 # parts
 inventory_parts <- read.csv("data/inventory_parts.csv")
@@ -61,23 +67,27 @@ parts_df <- inner_join(parts_df, parts_join_cat, by='part_num')
 rm(parts_join_cat)
 
 parts_df <- mutate(parts_df, is_spare=factor(is_spare), part_material = factor(part_material), is_trans = factor(is_trans),part_name = factor(part_name) )%>%select(-(img_url))
+parts_df<- inner_join(parts_df, set_num_year, by='set_num')
 
 ```
 ## Podsumownie danych i ich statystyki
 ### Zestawy
 ```{r data_stats_sets}
 prettyTable(head(sets_df))
-summary(sets_df)
+str(sets_df)
+knitr::kable(summary(sets_df))
 ```
 ### Minigurki
 ```{r data_stats_figs}
 prettyTable(head(figs_df))
-summary(figs_df)
+str(figs_df)
+knitr::kable(summary(figs_df))
 ```
 ### Części
 ```{r data_stats_parts}
 prettyTable(head(parts_df))
-summary(parts_df)
+str(parts_df)
+knitr::kable(summary(parts_df))
 ```
 
 ## Przetworzenie brakujących danych
@@ -87,10 +97,78 @@ names(which(colSums(is.na(sets_df))> 0))
 names(which(colSums(is.na(figs_df))> 0))
 names(which(colSums(is.na(parts_df))> 0))
 ```
-Powyższy wynik informuje nas, że wartości puste występują jedynie w kolumnie parent_theme_id w tabeli zestawów. Nie stanowi to problemu oraz jest to wynik oczekiwany, ze względu na zastosowanie połączeń inner join.
+Powyższy wynik informuje nas, że wartości puste występują jedynie w kolumnie parent_theme_id w tabeli zestawów. Jest to nieszkodliwe oraz oczekiwane, ze względu na zastosowanie połączeń typu inner_join.
 
 
+# Analiza wartości atrybutów
+
+## Analiza zestawów
+
+```{r analiza_atrybutow_zestawy}
+psby<-ggplot(group_by(sets_df, year) %>%
+         summarise(count = n()),
+       aes(x = year,
+           y = count)) +
+  geom_bar(stat = "identity",
+           position =
+             "identity")+
+  ggtitle("Liczba zestawów wg roku") +
+  xlab("Rok") +
+  ylab("Liczba zestawów") + 
+  theme_bw()
+ggplotly(psby)
+
+themes_by_year <- group_by(sets_df, year) %>%
+         summarise(themes = n_distinct(theme_name))
+ptby <- ggplot(themes_by_year,
+       aes(x = year,
+           y = themes)) +
+  geom_bar(stat = "identity",
+           position =
+             "identity")+
+  ggtitle("Liczba tematów wg roku") +
+  xlab("Rok") +
+  ylab("Liczba tematów") + 
+  theme_bw()
+ggplotly(ptby)
 
 
+q <- 90
+p <- quantile(sets_df$num_parts, c( q/100))
+filtered <- filter(sets_df, num_parts > 0)%>%mutate(small = num_parts <= p[1])
 
+w1 <- ggplot(
+  filter(filtered, small == TRUE),
+       aes(x = num_parts)) +
+  geom_histogram(binwidth = 50)+
+  geom_density() + 
+  ggtitle(sprintf("Częstotliwości rozmiarów zestawów: część I (percentyl 0-%d%%)",q)) +
+  xlab("Rozmiar zestawu") +
+  ylab("Częstotliwość występowania") + 
+  theme_bw()
+w2 <- ggplot(filter(filtered, small == FALSE),
+       aes(x = num_parts)) +
+  geom_histogram(binwidth = 1000)+
+  geom_density() +
+  ggtitle(sprintf("Częstotliwości rozmiarów zestawów: część II (percentyl %d-100%%)", q)) +
+  xlab("Rozmiar zestawu") +
+  ylab("Częstotliwość występowania") + 
+  theme_bw()
+ggplotly(w1)
+ggplotly(w2)
 
+```
+
+## Analiza minifigurek
+
+```{r analiza_atrybutow_figurki}
+
+hist <- ggplot(figs_df,
+       aes(x = fig_quantity)) +
+  geom_histogram(binwidth = 10)+
+  geom_density() +
+  ggtitle(sprintf("Rozkład częstotliwości dla ilości figurek w zestawach")) +
+  xlab("Liczba figurek") +
+  ylab("Częstotliwość występowania") + 
+  theme_bw()
+ggplotly(hist)
