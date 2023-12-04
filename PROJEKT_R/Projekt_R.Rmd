@@ -19,17 +19,244 @@ my_seed <- 145381  # numer indeksu jako seed dla operacji losowych
 ```
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(cache = TRUE)
 prettyTable <- function(table_df, round_digits=2) {
     DT::datatable(table_df, style="bootstrap", filter = "top", rownames = FALSE, extensions = "Buttons", options = list(dom = 'Bfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print'))) %>% formatRound(names(dplyr::select_if(table_df, is.numeric)), round_digits)
 }
 
 ```
 # Dane
+
+Wtkorzystany zbiór danych składa się z trzech głównych części:
+
+* informacji o zestawach
+* informacji o minigigurkach w zestawach
+* informacjci o częsciach - ich kategorie, kolory, złożone elementy
+
+Dane są zawarte w poniższych tabelach, a zawarte w nich dane posiadają niżej przedstawione charakterystyki. Niektóre z pól danych (np. adresy url do obrazków przedstawianjących klocek lub figurkę, identyfikatory) zostały przeze mnie pomienięte we wczytywaniu bądź analizie, ze względu na brak merytorycznego wkładu w analizę. Niektóre kolumny otrzymały również zmienione nazwy, aby ułatwić późniejsze łączenie danych.
+
+## Zestawy
+### Inventories
+Tabela pozwalająca połączyć powyższe 3 części w jedną całość.
+
+```{r inventories}
+inventories <- read.csv("data/inventories.csv")%>%mutate(set_num = factor(set_num))
+str(inventories)
+knitr::kable(summary(inventories))
+```
+Rozmiar tabeli: ***`r nrow(inventories)`***
+
+Ze względu, że tabela jest tak naprawdę tabelą łączącą i skłąda się z samych identyfikatorów, nie wydaje się potrzebna głębsza analiza jej pól.
+
+### Sets
+
+Tabela zawiera informację o zestawach: w którym roku były wydane, ile mają części, nazwa zestawu oraz motyw zestawu.
+
+```{r sets}
+sets <- read.csv("data/sets.csv")%>%mutate(set_num = factor(set_num), name = factor(name), set_num = factor(set_num))%>%rename(set_num_parts = num_parts)%>%select(-img_url)
+str(sets)
+knitr::kable(summary(sets))
+```
+Tabela daje nam informację, że obecnie dostępnych jest ***`r nrow(sets)`*** zestawów Lego. Należy zwrócić uwagę, że jest to wartość mniejsza, niż liczba w wpisów w tabeli *inventories*. Wynika to z faktu, że część zetawów wystąpiła w różnych wersjach. Informacja o wersji znaduje się w tabeli *inventories*. Z tego też względu w tamtej tabeli ten sam zestaw może występować kilkukrotnie, z inną wersją.
+
+```{r sets_num_parts}
+q <- 90
+p <- quantile(sets$set_num_parts, c( q/100))
+filtered <- filter(sets, set_num_parts > 0)%>%mutate(small = set_num_parts <= p[1])
+
+w1 <- ggplot(
+  filter(filtered, small == TRUE),
+       aes(x = set_num_parts)) +
+  geom_histogram(binwidth =10)+
+  ggtitle(sprintf("Częstotliwości rozmiarów zestawów: część I (percentyl 0-%d%%)",q)) +
+  xlab("Rozmiar zestawu") +
+  ylab("Częstotliwość występowania") +
+  theme_bw()
+w2 <- ggplot(filter(filtered, small == FALSE),
+       aes(x = set_num_parts)) +
+  geom_histogram(binwidth = 1000)+
+  ggtitle(sprintf("Częstotliwości rozmiarów zestawów: część II (percentyl %d-100%%)", q)) +
+  xlab("Rozmiar zestawu") +
+  ylab("Częstotliwość występowania") +
+  theme_bw()
+ggplotly(w1)
+ggplotly(w2)
+```
+
+```{r sets_years}
+
+psby<-ggplot(sets,
+       aes(x = year)) +
+ geom_histogram(binwidth=1)+
+  ggtitle("Liczba zestawów wg roku - rozkład parametru \"rok\"") +
+  xlab("Rok") +
+  ylab("Liczba zestawów") +
+  theme_bw()
+ggplotly(psby)
+
+```
+### Themes
+
+Tabela zawiera informację o motywach zestawów. Motywy są ułożone hierarchicznie - jeden motyw może być zbiorem wielu innych. Motyw posiadający nad sobą motyw macierzysty posiada referencję do niego w polu *parent_id*.
+
+```{r themes}
+themes <- read.csv("data/themes.csv")%>%mutate(name = factor(name))%>%rename(theme_name = name)
+str(themes)
+knitr::kable(summary(themes))
+```
+Z powyższych danych widzimy, że obecnie w Lego mamy dostępne ***`r nrow(themes)`*** motywów, z czego aż ***`r nrow(filter(themes, is.na(parent_id)))`*** to motywy będące korzeniami swoich hierarchii.
+
+### Inventory sets
+
+Niektóre zestawy mogą składać się kilku innych. Tabela *inventory_sets* zawiera informację, ile zestawów o identyfikatorze *set_num* zawiera zestaw nadzrzędny.
+
+```{r inventory_sets}
+inventory_sets <- read.csv("data/inventory_sets.csv")%>%mutate(set_num = factor(set_num))%>%rename(set_quantity = quantity)
+str(inventory_sets)
+knitr::kable(summary(inventory_sets))
+
+complex_sets <-group_by(inventory_sets, inventory_id)%>%summarise(subsets = n_distinct(set_num))
+```
+W zbiorze tym mamy ***`r nrow(inventory_sets)`*** wpisów, opisujących ***`r nrow(complex_sets)` zestawów złożonych***.
+```{r complex_sets_sizes}
+psby<-ggplot(complex_sets,
+             aes(x = subsets))+
+ geom_histogram(binwidth =1)+
+  ggtitle("Liczba zestawów wchodząca w skład zestawów złożonych") +
+  xlab("Liczba zestawów w zestawie złożonym") +
+  ylab("Liczba zestawów złożonych") +
+  theme_bw()
+ggplotly(psby)
+```
+
+## Minifigurki
+
+### Minifigs
+
+Tabela zawiera informację o nazwie oraz liczbie części minifigurki.
+```{r minifigs}
+minifigs <- read.csv("data/minifigs.csv")%>%mutate(name = factor(name), fig_num = factor(fig_num))%>%rename(fig_name = name, fig_num_parts = num_parts)%>%select(-img_url)
+str(minifigs)
+knitr::kable(summary(minifigs))
+```
+Tabela zawiera informację o ***`r nrow(minifigs)`*** minifigurkach. Warto zwrócić uwagę, że w zbiorze występuje jedynie ***`r nlevels(minifigs$fig_name)`*** unikalnych nazw figurek, co oznacza, że część różnych figurek posiada tą samą nazwę.
+
+```{r minifigs_attributes}
+psby<-ggplot(minifigs,
+             aes(x = fig_num_parts))+
+ geom_histogram(binwidth =1)+
+  ggtitle("Liczba elementów wchodzących w skład figurki (skala logarytmiczna)") +
+  xlab("Liczba elementów") +
+  ylab("Liczba figurek") +
+  scale_y_log10() +
+  theme_bw()
+ggplotly(psby)
+```
+
+### Inventory minifigs
+
+Tabela zawiera informację, ile sztuk danej figurki występuje w danym zestwie.
+
+```{r inventory_minifigs}
+inventory_minifigs <- read.csv("data/inventory_minifigs.csv")%>%mutate(fig_num = factor(fig_num))%>%rename(fig_quantity = quantity)
+str(inventory_minifigs)
+knitr::kable(summary(inventory_minifigs))
+
+minifigs_by_inventory <- group_by(inventory_minifigs, inventory_id)%>%summarise(different_minifigs = n_distinct(fig_num), fig_sum = sum(fig_quantity))
+```
+Zbiór zawiera ***`r nrow(inventory_minifigs)`*** wpisów na temat figurek w ***`r nrow(minifigs_by_inventory)`*** zestawach.
+
+```{r inventory_minifigs_attributes}
+psby<-ggplot(inventory_minifigs,
+             aes(x = fig_quantity))+
+ geom_histogram(binwidth =1)+
+  ggtitle("Częstotliwość wystąpień tej samej figurki w ramach zestawu (skala logarytmiczna)") +
+  xlab("Ilośc tej samej figurki") +
+  ylab("Liczba wystąpień") +
+  scale_y_log10() +
+  theme_bw()
+ggplotly(psby)
+```
+
+Zgrupowanie danych w ramach zestawów pozwala otrzymać następujące dane na temat ogólnej liczby figurek w zestawach oraz liczby unikalnych figurek w ramach zestawu.
+Należy pamiętać, że na tym etapie analiza nie uwzględnia zestawów nie posiadających figurek.
+
+```{r inventory_minifigs_grouped}
+knitr::kable(summary(minifigs_by_inventory))
+
+psby<-ggplot(minifigs_by_inventory,
+             aes(x = different_minifigs))+
+geom_histogram(binwidth =1)+
+  ggtitle("Liczba różnych figurek w ramach zestawu (skala logarytmiczna)") +
+  xlab("Ilość różnych figurek") +
+  ylab("Liczba zestawów") +
+  scale_y_log10() +
+  theme_bw()
+ggplotly(psby)
+
+psby<-ggplot(minifigs_by_inventory,
+             aes(x = fig_sum))+
+geom_histogram(binwidth =1)+
+  ggtitle("Liczba figurek w ramach zestawu (skala logarytmiczna)") +
+  xlab("Ilość figurek") +
+  ylab("Liczba zestawów") +
+  scale_y_log10() +
+  theme_bw()
+ggplotly(psby)
+
+```
+
+## Części
+
+### Inventory parts
+
+Tabela zawiera listę części występujących w ramach zestawu. Zawiera informację o identyfikatorze części, jej ilości, kolorze (ta sama część może występować w ramach zestawu w różnych kolorach) oraz czy część jest zapasowa (nadmiarowa w zestawie względem wymaganej liczby).
+
+```{r inventory_parts}
+inventory_parts <- read.csv("data/inventory_parts.csv")%>%mutate(is_spare = factor(is_spare), part_num = factor(part_num))%>%rename(part_quantity = quantity)%>%select(-img_url)
+str(inventory_parts)
+knitr::kable(summary(inventory_parts))
+
+all_parts <- sum(inventory_parts$part_quantity)
+spare_parts <- sum(filter(inventory_parts, is_spare == 't')$part_quantity)
+```
+Zbiór posiada ***`r nrow(inventory_parts)`*** wierszy opisujących części w zestawach.
+
+Wynika z niego, że ***`r format(round(spare_parts/all_parts, 2), nsmall = 2)`%*** części otrzymywanych w ramach zestawów, to części zapasowe.
+
+```{r inventory_parts_attributes}
+t<- data.frame(y = c(all_parts- spare_parts, spare_parts), zapasowe = c("nie", "tak"))
+ggplotly(
+  ggplot(data=t, aes(x=NA, y=y, fill=zapasowe)) +
+  geom_bar(stat="identity") +
+    ggtitle("Stosunek części zapasowych do zwykłych w zestawach") +
+  xlab("") +
+  ylab("Liczba częsci") +
+  coord_flip() +
+    scale_y_continuous(labels = scales::comma) +
+    theme_bw()
+)
+
+
+q<-95
+psby<-ggplot(filter(inventory_parts, part_quantity <= quantile(inventory_parts$part_quantity, q/100)),
+             aes(x = part_quantity))+
+geom_histogram(binwidth =1)+
+  # geom_density() + 
+  ggtitle(sprintf("Częstotliwość rozkładu parametru \"part_quantity\" (0-%d%% wpisów)", q)) +
+  xlab("Ilość sztuk") +
+  ylab("Liczba wystąpień") +
+  scale_y_continuous(labels = scales::comma) +
+  theme_bw()
+ggplotly(psby)
+```
+
+
 ## Wczytanie danych
 
 ```{r data_read, cache=TRUE}
-inventories <- read.csv("data/inventories.csv")
+
 
 # zestawy
 inventory_sets <- read.csv("data/inventory_sets.csv")
@@ -135,18 +362,7 @@ names(which(colSums(is.na(parts_df))> 0))
 ## Analiza zestawów
 
 ```{r analiza_atrybutow_zestawy}
-psby<-ggplot(group_by(sets, year) %>%
-         summarise(count = n()),
-       aes(x = year,
-           y = count)) +
-  geom_bar(stat = "identity",
-           position =
-             "identity")+
-  ggtitle("Liczba zestawów wg roku") +
-  xlab("Rok") +
-  ylab("Liczba zestawów") +
-  theme_bw()
-ggplotly(psby)
+
 
 themes_by_year <- group_by(figs_sets_df, year) %>%
          summarise(themes = n_distinct(theme_name))
@@ -163,27 +379,7 @@ ptby <- ggplot(themes_by_year,
 ggplotly(ptby)
 
 
-q <- 90
-p <- quantile(sets$num_parts, c( q/100))
-filtered <- filter(sets, num_parts > 0)%>%mutate(small = num_parts <= p[1])
 
-w1 <- ggplot(
-  filter(filtered, small == TRUE),
-       aes(x = num_parts)) +
-  geom_histogram(binwidth = 50)+
-  ggtitle(sprintf("Częstotliwości rozmiarów zestawów: część I (percentyl 0-%d%%)",q)) +
-  xlab("Rozmiar zestawu") +
-  ylab("Częstotliwość występowania") +
-  theme_bw()
-w2 <- ggplot(filter(filtered, small == FALSE),
-       aes(x = num_parts)) +
-  geom_histogram(binwidth = 1000)+
-  ggtitle(sprintf("Częstotliwości rozmiarów zestawów: część II (percentyl %d-100%%)", q)) +
-  xlab("Rozmiar zestawu") +
-  ylab("Częstotliwość występowania") +
-  theme_bw()
-ggplotly(w1)
-ggplotly(w2)
 
 ```
 ## Analiza minifigurek
