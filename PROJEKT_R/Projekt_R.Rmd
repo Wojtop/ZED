@@ -45,7 +45,7 @@ inventories <- read.csv("data/inventories.csv")%>%mutate(set_num = factor(set_nu
 str(inventories)
 knitr::kable(summary(inventories))
 ```
-Rozmiar tabeli: ***`r nrow(inventories)`***
+Rozmiar tabeli: ***`r format(nrow(inventories),big.mark=",",scientific=FALSE)`*** wierszy
 
 Ze względu, że tabela jest tak naprawdę tabelą łączącą i skłąda się z samych identyfikatorów, nie wydaje się potrzebna głębsza analiza jej pól.
 
@@ -58,7 +58,7 @@ sets <- read.csv("data/sets.csv")%>%mutate(set_num = factor(set_num), name = fac
 str(sets)
 knitr::kable(summary(sets))
 ```
-Tabela daje nam informację, że obecnie dostępnych jest ***`r nrow(sets)`*** zestawów Lego. Należy zwrócić uwagę, że jest to wartość mniejsza, niż liczba w wpisów w tabeli *inventories*. Wynika to z faktu, że część zetawów wystąpiła w różnych wersjach. Informacja o wersji znaduje się w tabeli *inventories*. Z tego też względu w tamtej tabeli ten sam zestaw może występować kilkukrotnie, z inną wersją.
+Tabela daje nam informację, że obecnie dostępnych jest ***`r format(nrow(sets),big.mark=",",scientific=FALSE)`*** zestawów Lego. Należy zwrócić uwagę, że jest to wartość mniejsza, niż liczba w wpisów w tabeli *inventories*. Wynika to z faktu, że część zetawów wystąpiła w różnych wersjach. Informacja o wersji znaduje się w tabeli *inventories*. Z tego też względu w tamtej tabeli ten sam zestaw może występować kilkukrotnie, z inną wersją.
 
 ```{r sets_num_parts}
 q <- 90
@@ -105,7 +105,7 @@ themes <- read.csv("data/themes.csv")%>%mutate(name = factor(name))%>%rename(the
 str(themes)
 knitr::kable(summary(themes))
 ```
-Z powyższych danych widzimy, że obecnie w Lego mamy dostępne ***`r nrow(themes)`*** motywów, z czego aż ***`r nrow(filter(themes, is.na(parent_id)))`*** to motywy będące korzeniami swoich hierarchii.
+Z powyższych danych widzimy, że obecnie w Lego mamy dostępne ***`r format(nrow(themes),big.mark=",",scientific=FALSE)`*** motywów, z czego aż ***`r format(nrow(filter(themes, is.na(parent_id))),big.mark=",",scientific=FALSE)`*** to motywy będące korzeniami swoich hierarchii.
 
 ### Inventory sets
 
@@ -118,7 +118,7 @@ knitr::kable(summary(inventory_sets))
 
 complex_sets <-group_by(inventory_sets, inventory_id)%>%summarise(subsets = n_distinct(set_num))
 ```
-W zbiorze tym mamy ***`r nrow(inventory_sets)`*** wpisów, opisujących ***`r nrow(complex_sets)` zestawów złożonych***.
+W zbiorze tym mamy ***`r format(nrow(inventory_sets),big.mark=",",scientific=FALSE)`*** wpisów, opisujących ***`r format(nrow(complex_sets),big.mark=",",scientific=FALSE)` zestawów złożonych***.
 ```{r complex_sets_sizes}
 psby<-ggplot(complex_sets,
              aes(x = subsets))+
@@ -140,7 +140,7 @@ minifigs <- read.csv("data/minifigs.csv")%>%mutate(name = factor(name), fig_num 
 str(minifigs)
 knitr::kable(summary(minifigs))
 ```
-Tabela zawiera informację o ***`r nrow(minifigs)`*** minifigurkach. Warto zwrócić uwagę, że w zbiorze występuje jedynie ***`r nlevels(minifigs$fig_name)`*** unikalnych nazw figurek, co oznacza, że część różnych figurek posiada tą samą nazwę.
+Tabela zawiera informację o ***`r format(nrow(minifigs),big.mark=",",scientific=FALSE)`*** minifigurkach. Warto zwrócić uwagę, że w zbiorze występuje jedynie ***`r format(nlevels(minifigs$fig_name),big.mark=",",scientific=FALSE)`*** unikalnych nazw figurek, co oznacza, że część różnych figurek posiada tą samą nazwę.
 
 ```{r minifigs_attributes}
 psby<-ggplot(minifigs,
@@ -165,7 +165,7 @@ knitr::kable(summary(inventory_minifigs))
 
 minifigs_by_inventory <- group_by(inventory_minifigs, inventory_id)%>%summarise(different_minifigs = n_distinct(fig_num), fig_sum = sum(fig_quantity))
 ```
-Zbiór zawiera ***`r nrow(inventory_minifigs)`*** wpisów na temat figurek w ***`r nrow(minifigs_by_inventory)`*** zestawach.
+Zbiór zawiera ***`r format(nrow(inventory_minifigs),big.mark=",",scientific=FALSE)`*** wpisów na temat figurek w ***`r format(nrow(minifigs_by_inventory),big.mark=",",scientific=FALSE)`*** zestawach.
 
 ```{r inventory_minifigs_attributes}
 psby<-ggplot(inventory_minifigs,
@@ -221,7 +221,7 @@ knitr::kable(summary(inventory_parts))
 all_parts <- sum(inventory_parts$part_quantity)
 spare_parts <- sum(filter(inventory_parts, is_spare == 't')$part_quantity)
 ```
-Zbiór posiada ***`r nrow(inventory_parts)`*** wierszy opisujących części w zestawach.
+Zbiór posiada ***`r format(nrow(inventory_parts),big.mark=",",scientific=FALSE)`*** wierszy opisujących części w zestawach.
 
 Wynika z niego, że ***`r format(round(spare_parts/all_parts, 2), nsmall = 2)`%*** części otrzymywanych w ramach zestawów, to części zapasowe.
 
@@ -251,57 +251,165 @@ geom_histogram(binwidth =1)+
   theme_bw()
 ggplotly(psby)
 ```
+### Colors
+Tabela zawiera dane o kolorach klocków. Zawiera nazwę koloru, jego wartość RGB zapisaną szesnastkowo i informację, czy jest przezroczysty.
 
+```{r colors}
+colors <- read.csv("data/colors.csv")%>%mutate(is_trans = factor(is_trans), name = factor(name))%>%rename(color_name = name)
+str(colors)
+knitr::kable(summary(colors))
+```
+Dane w tabeli opisują ***`r format(nrow(colors),big.mark=",",scientific=FALSE)`*** kolorów.
+```{r colors_attributes}
+by_trans <- group_by(colors, is_trans)%>%summarise(count = n())
+ggplotly(
+  ggplot(by_trans, aes(x=NA, y=count, fill=is_trans)) +
+  geom_bar(stat="identity") +
+    ggtitle("Stosunek kolorów przezroczystych do nieprzezroczystych") +
+  xlab("") +
+  ylab("Liczba kolorów") +
+  coord_flip() +
+    scale_y_continuous(labels = scales::comma) +
+    theme_bw()
+)
+```
+
+
+### Parts i part categories
+Tabela parts zawiera katalog części Lego. Niektóre części mogą składać się z kilku elementów. Zawiera nazwę części oraz identyfikator kategorii, do której należy część.Z kolei tabela part_categories zawiera listę kategorii, do których są klasyfikowane klocki. Aby skrócić analizę, pozwoliłem sobie od razu połączyć te dwie tabele i pokazać ich połączony rozkład atrybutów.
+#### Parts
+```{r parts}
+parts <- read.csv("data/parts.csv")%>%mutate(name = factor(name), part_num=factor(part_num), part_material = factor(part_material))%>%rename(part_name = name)
+str(parts)
+knitr::kable(summary(parts))
+```
+
+Tabela parts opisuje ***`r format(nrow(parts),big.mark=",",scientific=FALSE)`*** części Lego.
+
+```{r parts_materials}
+psby<-ggplot(parts,
+             aes(x = part_material))+
+geom_bar()+
+  ggtitle("Liczba dostępnych części w zależności od materiału") +
+  xlab("Materiał") +
+  ylab("Liczba części") +
+  scale_y_log10() +
+  theme_bw() +
+  scale_y_continuous(labels = scales::comma) +
+  coord_flip()
+ggplotly(psby)
+```
+
+#### Parts categories
+```{r parts_categories}
+parts_cat <- read.csv("data/part_categories.csv")%>%mutate(name = factor(name))%>%rename(category_name = name)
+str(parts_cat)
+knitr::kable(summary(parts_cat))
+```
+Tabela part categories opisuje ***`r format(nrow(parts_cat),big.mark=",",scientific=FALSE)`*** kategorii części Lego.
+
+```{r parts_categories_attr}
+parts_categories <- full_join(parts, parts_cat, join_by(part_cat_id == id))
+knitr::kable(summary(parts_categories))
+
+psby<-ggplot(group_by(parts_categories,category_name)%>%summarise(count= n()),
+             aes(x = reorder(category_name, count, decreasing=TRUE), y = count))+
+geom_bar(stat='identity')+
+  ggtitle("Liczba części w kategoriach") +
+  xlab("Kategoria") +
+  ylab("Liczba części") + 
+  theme_bw() +
+  scale_y_continuous(labels = scales::comma) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+ggplotly(psby)
+```
+### Elements
+
+Jak wspomniano wyżej, niektóre części mogą składać się z kilku klocków. W tabeli elements zebrano informacje, do jakich części przynależą poszczególne klocki.
+
+```{r elements}
+elements <- read.csv("data/elements.csv")%>%mutate(part_num = factor(part_num))
+str(elements)
+knitr::kable(summary(elements))
+
+elements_grouped <- group_by(elements, part_num) %>%summarise(elements_count = n(), distinct_elements = n_distinct(part_num))
+```
+Tabela zawiera ***`r format(nrow(elements),big.mark=",",scientific=FALSE)`*** wpisów zawierających opis ***`r format(nrow(elements_grouped),big.mark=",",scientific=FALSE)`*** złożonych części.
+
+### Part relationships
+
+Tabela zawiera informacje o relacjach zachodzących między częściami.
+
+```{r parts_relationships}
+parts_relationships <- read.csv("data/part_relationships.csv")%>%mutate(rel_type = factor(rel_type), parent_part_num = factor(parent_part_num), child_part_num = factor(child_part_num))
+str(parts_relationships)
+knitr::kable(summary(parts_relationships))
+```
+Dane zawierają ***`r format(nrow(parts_relationships),big.mark=",",scientific=FALSE)`*** wpisów.
+
+```{r parts_relations_attr}
+psby<-ggplot(group_by(parts_relationships,rel_type)%>%summarise(count= n()),
+             aes(x = reorder(rel_type, count, decreasing=TRUE), y = count))+
+geom_bar(stat='identity')+
+  ggtitle("Rozkład relacji pomiędzy częściami") +
+  xlab("Relacja") +
+  ylab("Liczba relacji") + 
+  theme_bw() +
+  scale_y_continuous(labels = scales::comma) +
+  coord_flip() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+ggplotly(psby)
+```
 
 ## Wczytanie danych
 
 ```{r data_read, cache=TRUE}
 
-
-# zestawy
-inventory_sets <- read.csv("data/inventory_sets.csv")
-
-sets<- read.csv("data/sets.csv")
-sets <- rename(sets, set_name = name)
-
-set_num_year <- select(sets, set_num, year)
-t <-group_by(set_num_year, set_num)%>%summarise(all = n(), dist = n_distinct(set_num))%>%filter(dist>1 | all > 1)   # set_num są unikalne
-
-themes <- read.csv("data/themes.csv")%>%rename(theme_id = id, theme_name = name, parent_theme_id = parent_id)
-sets_df <- inner_join(themes, sets, by='theme_id')%>%mutate(theme_name=factor(theme_name),set_name=factor(set_name))
-sets_df <- inner_join(inventories, sets_df, by='set_num')%>%select(-(img_url))
-
-# minifigurki
-minifigs <- read.csv("data/minifigs.csv")
-inventory_minifigs <- read.csv("data/inventory_minifigs.csv")
-
-figs <- inner_join(minifigs, inventory_minifigs, by='fig_num')%>%rename(fig_name = name, fig_num_parts = num_parts, fig_quantity = quantity, fig_img_url = img_url)%>%select(-fig_img_url)
-
-figs_df <- inner_join(inventories, figs, join_by(id == inventory_id))%>%mutate(fig_name=factor(fig_name))
-figs_df<-left_join(figs_df, set_num_year, by='set_num')
-
-# minifigurki i zestawy
-figs_sets_df <- left_join(sets_df, figs_df, by='set_num')%>%select(-c(version.y, id.y, year.y))%>%rename(id = id.x, year = year.x, version = version.x)%>%mutate(
- fig_quantity=coalesce(fig_quantity, 0),
- fig_num_parts = coalesce(fig_num_parts, 0),
- set_num=factor(set_num)
- )%>%arrange(set_num)
-
-# parts
-inventory_parts <- read.csv("data/inventory_parts.csv")
-parts_df <- inner_join(inventories, inventory_parts, join_by(id == inventory_id))%>%rename(part_quantity = quantity)
-
-colors <- read.csv("data/colors.csv")%>%rename(color_name = name)%>%mutate(color_name=factor(color_name))
-parts_df <- inner_join(parts_df, colors, join_by(color_id == id))
-
-parts <- read.csv("data/parts.csv")%>%rename(part_name = name)
-parts_categories <- read.csv("data/part_categories.csv")%>%rename(part_category_name = name)%>%mutate(part_category_name = factor(part_category_name))
-parts_join_cat <- inner_join(parts, parts_categories, join_by(part_cat_id == id))
-parts_df <- inner_join(parts_df, parts_join_cat, by='part_num')
-rm(parts_join_cat)
-
-parts_df <- mutate(parts_df, is_spare=factor(is_spare), part_material = factor(part_material), is_trans = factor(is_trans),part_name = factor(part_name) )%>%select(-(img_url))
-parts_df<- inner_join(parts_df, set_num_year, by='set_num')%>%arrange(set_num)
+# 
+# # zestawy
+# inventory_sets <- read.csv("data/inventory_sets.csv")
+# 
+# sets<- read.csv("data/sets.csv")
+# sets <- rename(sets, set_name = name)
+# 
+# set_num_year <- select(sets, set_num, year)
+# t <-group_by(set_num_year, set_num)%>%summarise(all = n(), dist = n_distinct(set_num))%>%filter(dist>1 | all > 1)   # set_num są unikalne
+# 
+# themes <- read.csv("data/themes.csv")%>%rename(theme_id = id, theme_name = name, parent_theme_id = parent_id)
+# sets_df <- inner_join(themes, sets, by='theme_id')%>%mutate(theme_name=factor(theme_name),set_name=factor(set_name))
+# sets_df <- inner_join(inventories, sets_df, by='set_num')%>%select(-(img_url))
+# 
+# # minifigurki
+# minifigs <- read.csv("data/minifigs.csv")
+# inventory_minifigs <- read.csv("data/inventory_minifigs.csv")
+# 
+# figs <- inner_join(minifigs, inventory_minifigs, by='fig_num')%>%rename(fig_name = name, fig_num_parts = num_parts, fig_quantity = quantity, fig_img_url = img_url)%>%select(-fig_img_url)
+# 
+# figs_df <- inner_join(inventories, figs, join_by(id == inventory_id))%>%mutate(fig_name=factor(fig_name))
+# figs_df<-left_join(figs_df, set_num_year, by='set_num')
+# 
+# # minifigurki i zestawy
+# figs_sets_df <- left_join(sets_df, figs_df, by='set_num')%>%select(-c(version.y, id.y, year.y))%>%rename(id = id.x, year = year.x, version = version.x)%>%mutate(
+#  fig_quantity=coalesce(fig_quantity, 0),
+#  fig_num_parts = coalesce(fig_num_parts, 0),
+#  set_num=factor(set_num)
+#  )%>%arrange(set_num)
+# 
+# # parts
+# inventory_parts <- read.csv("data/inventory_parts.csv")
+# parts_df <- inner_join(inventories, inventory_parts, join_by(id == inventory_id))%>%rename(part_quantity = quantity)
+# 
+# colors <- read.csv("data/colors.csv")%>%rename(color_name = name)%>%mutate(color_name=factor(color_name))
+# parts_df <- inner_join(parts_df, colors, join_by(color_id == id))
+# 
+# parts <- read.csv("data/parts.csv")%>%rename(part_name = name)
+# parts_categories <- read.csv("data/part_categories.csv")%>%rename(part_category_name = name)%>%mutate(part_category_name = factor(part_category_name))
+# parts_join_cat <- inner_join(parts, parts_categories, join_by(part_cat_id == id))
+# parts_df <- inner_join(parts_df, parts_join_cat, by='part_num')
+# rm(parts_join_cat)
+# 
+# parts_df <- mutate(parts_df, is_spare=factor(is_spare), part_material = factor(part_material), is_trans = factor(is_trans),part_name = factor(part_name) )%>%select(-(img_url))
+# parts_df<- inner_join(parts_df, set_num_year, by='set_num')%>%arrange(set_num)
 
 # # częsci i zestawy
 # parts_sets_df <- right_join(parts_df, sets_df, by='set_num')%>%rename(id = id.x, version = version.x)%>%select(-c(version.y, id.y))%>%mutate(
@@ -314,13 +422,13 @@ parts_df<- inner_join(parts_df, set_num_year, by='set_num')%>%arrange(set_num)
 ```
 ## Rozmiar zbioru i podstawowe statystyki
 ```{r data_stats_sets}
-prettyTable(head(figs_sets_df, 100))
-str(figs_sets_df)
-knitr::kable(summary(figs_sets_df))
-
-prettyTable(head(parts_df, 100))
-str(parts_df)
-knitr::kable(summary(parts_df))
+# prettyTable(head(figs_sets_df, 100))
+# str(figs_sets_df)
+# knitr::kable(summary(figs_sets_df))
+# 
+# prettyTable(head(parts_df, 100))
+# str(parts_df)
+# knitr::kable(summary(parts_df))
 ```
 <!-- ### Zestawy -->
 <!-- ```{r data_stats_sets} -->
@@ -344,8 +452,8 @@ knitr::kable(summary(parts_df))
 ## Przetworzenie brakujących danych
 Aby uniknąć nieprzyjmeności związanych z brakującymi danymi musimy przeprowadzić analizę, w jakich kolumnach takie dane się znajdują:
 ```{r data_cleaning}
-names(which(colSums(is.na(figs_sets_df))> 0))
-names(which(colSums(is.na(parts_df))> 0))
+# names(which(colSums(is.na(figs_sets_df))> 0))
+# names(which(colSums(is.na(parts_df))> 0))
 # names(which(colSums(is.na(sets_df))> 0))
 # names(which(colSums(is.na(figs_df))> 0))
 # names(which(colSums(is.na(parts_df))> 0))
