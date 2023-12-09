@@ -25,7 +25,8 @@ library(ggplot2)
 library(plotly)
 library(caret)
 library(ggcorrplot)
-# library(gganimate)
+library(MLeval)
+
 
 my_seed <- 145381  # numer indeksu jako seed dla operacji losowych
 ```
@@ -485,7 +486,6 @@ ggplotly(
   + xlab("Rok")
   + ylab("Liczba zestawów")
   + theme_bw()
-  
 )
 
 ```
@@ -659,70 +659,58 @@ Z powyższego wykresy możemy wnioskować, że obecnie w ramach jednego zestawu 
 
 # Dalsze predykcje
 
-W ramach projektu chciałbym podjąć się utworzenia modelu, który będzie przewidywać następującą informację: jakiego kolorou będzie dana część, na podstawie informacji o jej kategorii, liczbie tej części w zestawie, motywu zestawu, liczbie kategorii
+W ramach projektu chciałbym podjąć się utworzenia modelu, który pozwoli przewidywać informację, czy dany zestaw będzie posiadać figurki.
 
-JAKIEGO KOLORU BĘDZIE KLOCEK ???? 
+## Zbiór danych
 
-```{r prediction_data_set, cache=TRUE}
-# data_set<- st%>%select(-theme_id, - parent_id, -primary_theme_id)%>%inner_join(ca, by='set_num')%>%rename(year = year.x)%>%select(-year.y)
-# data_set<- data_set%>%inner_join(colors, join_by(color_id == id))
-# data_set<- data_set%>%select(-c(name, id, version, color_id, rgb, is_trans))
-# data_set <- data_set%>%inner_join(parts_categories, by='part_num')%>%select(-part_cat_id, -part_name)
-# 
-# cat_c <-data_set%>%group_by(set_num)%>%summarise(set_categories_count = n_distinct(category_name))
-# data_set <- data_set%>%inner_join(cat_c, by='set_num')%>%select(-set_num)
-# 
-# knitr::kable(summary(data_set))
-# knitr::kable(head(data_set))
+Aby to osiągnąć, zbierzmy w jeden zestawnasępujące dane: rozmiar zestawu, motyw nadrzędny, rok, liczbę kategorii klocków w zestawie, liczbę użytych kolorów w zestawie. Warto zauważyć, że nie każdy zestaw ma figurki oraz nie każdy zestaw posiada części, stąd w wynikowym zbiorze mogą wystąpić wartości puste, które musimy zastąpić zerami. 
 
-```
-Rozmiar zbioru danych: ***`r format(nrow(data_set),big.mark=",",scientific=FALSE)`***
+Początkowo chciałem analizować inny problem i w danych przekazywanych do modelu przekazywać więcej informacji. Niestety ze względu na dużą liczbę danych kategorycznych w zbiorze, posiadających setki wartości, złożoność i czas obliczeń nie pozwoliły mi przeprowadzić takiej predykcji.
 
-ALE POWYŻSZY WYSADZAŁ MI KOMPUTER
-
-```{r}
-st
+```{r prediction_data_preparation, cache=TRUE}
+# figurki w zestawach (z motywami)
 fbs <- mfdf %>% group_by(set_num)%>%summarise(fig_sum = sum(fig_quantity), sum_fig_parts = sum(fig_num_parts))
-summary(fbs)
-
-# TODO - korelacja przed usuwaniem kolumn
-
 df <- st%>%full_join(fbs, by='set_num')%>%select( -theme_name, -theme_id, -primary_theme_id, -parent_id, -name)
 
-
-
-# df <- df%>%inner_join(colors_by_set, by='set_num')%>%select( -year.y, -primary_theme_name, -year.y)%>%rename(year = year.x, )
-
+# liczba kolorow i kategorii czesci per zestaw
 ipc <- inner_join(inventories, inventory_parts, join_by(id == inventory_id))%>%inner_join(parts, by='part_num')%>%group_by(set_num)%>%summarise(cat_num = n_distinct(part_cat_id), color_num = n_distinct(color_id))
 
-df<- df%>%inner_join(ipc, by='set_num')
+df<- df%>%left_join(ipc, by='set_num')
 
-colnames(df)
+# usuniecie wartosci pustych - nie kazdy zestaw ma figurki i nie kazdy zestaw ma czesci
+df <- df%>%mutate(fig_sum = coalesce( fig_sum, 0), sum_fig_parts = coalesce(sum_fig_parts, 0),cat_num = coalesce(cat_num, 0), color_num = coalesce(color_num, 0) )
 
-df <- df%>%mutate(fig_sum = coalesce( fig_sum, 0), sum_fig_parts = coalesce(sum_fig_parts, 0))
+# zmiana na zmienne kategoryczne - ma figurki lub nie
 df <- df%>%mutate(has_figs = if (fig_sum > 0){TRUE} else {FALSE}, has_figs = as.factor(has_figs), primary_theme_name = make.names(primary_theme_name))%>%select(-fig_sum, - sum_fig_parts, -set_num)
 
-summary(df)
-colnames(df)
+knitr::kable(summary(df))
+knitr::kable(head(df))
 
+```
+Zbiór posida ***`r format(nrow(df),big.mark=",",scientific=FALSE)`*** wpisów, czyli tyle co liczba zetawów w tabeli *sets*.
+
+## Korelacja pomiędzy atrybutami liczbowymi zbioru
+
+Na poniższej wizualizacji możemy zobaczyć wykres korealcji pomiędzy poszczególnymi parametrami liczbowymi zbioru. Niestety nie można było na nim uwzględnić nazwy motywu, ze względu na jego nieliczbowy format.
+
+```{r}
 corr <- round(cor(df%>%select(-primary_theme_name)%>%mutate(has_figs = as.numeric(has_figs))), 1)
-head(corr)
-
+knitr::kable(corr)
 ggplotly(
   ggcorrplot(corr, method = 'circle', lab = TRUE) + ggtitle("Korelacja między atrybutami liczbowymi badanego zbioru")
 )
 
-
 ```
+Najbardziej widocznymi powiązaniami są liczba kategorii klocków wraz z liczbą kolorów, a także liczba figurek z liczbą kategorii. Zaskakujący wydaje się niskie powiązanie liczby części w zestawie z liczbą figurek. Niskie powiązanie roku z posiadaniem figurek jest mniej niespodziewane, zwłaszcza w związku z wcześniejszą analizą, która wykazała, że liczba figurek w zestawach nie doznała zanczącej zmiany w czasie. Jednak ze względu na małą liczbę parametrów liczbowych, pozostawię te dane w zbiorze dla modelu.
 
-```{r}
-summary(df)
-knitr::kable(head(df%>%group_by(primary_theme_name)%>%summarise(count = n())%>%arrange(count)))
+## Budowa modelu
+
+```{r prediction, cache=TRUE}
 
 inTraining <- 
     createDataPartition(
         # atrybut do stratyfikacji
-        y = df$primary_theme_name,
+        y = df$has_figs,
         # procent w zbiorze uczącym
         p = .75,
         # chcemy indeksy a nie listę
@@ -731,21 +719,20 @@ inTraining <-
 training <- df[ inTraining,]
 testing  <- df[-inTraining,]
 
-summary(training)
-
-# str(training)
 knitr::kable(summary(training))
-nrow(training)
+knitr::kable(summary(testing))
+```
 
+Zbiór treningowy zawiera ***`r format(nrow(training),big.mark=",",scientific=FALSE)`*** wierszy, a testowy ***`r format(nrow(testing),big.mark=",",scientific=FALSE)`***. Warto zauważyć, że mamy w nimch nierównomiernie rozłożone klasy: klasy *FALSE* jest więcej w obydwu zbiorach.
+
+```{r, cache=TRUE}
 set.seed(my_seed)
 ctrl <- trainControl(
-    # powtórzona ocena krzyżowa
     method = "repeatedcv",
-  # method="none"
-    # liczba podziałów
     number = 5,
-    # # liczba powtórzeń
-    repeats = 2
+    repeats = 2,
+    savePredictions = T
+
 )
 fit <- train(has_figs ~ .,
              data = training,
@@ -756,10 +743,14 @@ fit <- train(has_figs ~ .,
 
 fit
 rfClasses <- predict(fit, newdata = testing)
-confusionMatrix(data = rfClasses, testing$has_figs)
-
-
+confusionMatrix(data = rfClasses, testing$has_figs, positive = 'TRUE')
 ```
+
+Ze względu na małą moc obliczniową mojego komputera oraz długi czas trwania uczenia, zdecydowałem się nie przeprowadzać dodatkowego strojenia (podjąłem takie próby ale ich czas podważył ich zasadność). 
+
+Nie mniej jednak, uważam że powyższy model osiągnął dobry wynik, nie dając się zwieść skrzywieniu danych. Wysokie *sensitivity* wskazuje na niewiele przypadków fałszywie pozytywnych (przyznanie figurki do zestawu, który nie powinien jej mieć). Wysokie *specificity* zapenia niewiel przypadków fałszywie negatywnych, czyli nieprzypisania figurki do zestawu. Ogólna trafność na poziomie ponad 90% oraz czułość i precyzja na poziomie ponad 90% dają stosunkowo wirygodny klasyfikator.
+
+Powyższy klsyfikator może być używany do przewidywania, czy dany zestaw z przyszłości będzie zawierać figurki.
 
 
 
