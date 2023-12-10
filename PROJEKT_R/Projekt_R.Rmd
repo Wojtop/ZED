@@ -10,6 +10,32 @@ output:
 
 # Podsumowanie
 
+Główne wnioski, których dostarczyła analiza:
+
+- Część zestawów została wypuszczona w wielu wersjach, których najwyższa sięga 16, jednak niemal wszystkie zestawy (ponad 99%) zostały wypuszczone tylko w jednej wersji.
+- Najwięcej zestawów ma od 0 do 30 oraz od 1000 do 2000 elementów.
+- Od początku okresu, który obejmują dane, widoczna jest wzrostowa tendencja liczby zestawów wydawanych w każdym roku (z okresami obejmującymi spadki, ale nie zmieniającymi globalnej tendencji).
+- Zestawy złożone składają się najczęściej z 1 do 4 mniejszych zestawów.
+- Minifigurki składają się najczęściej z 3 do 7 elementów.
+- Ta sama figurka najczęściej występuje w zestawie jeden raz.
+- Najczęściej w zestawie znajdują się 1 do 3 różnych figurek.
+- Zestawy posiadające figurki najczęściej mają po jednej figurce.
+- Figurki posiada ponad 8 tys. zestawów.
+- Około 2% części wydawanych w ramach zestawów, to części zapasowe.
+- Jeden element w danym kolorze najczęściej występuje w zestawie w liczbie do 10 sztuk.
+- Lego posiada ponad 250 kolorów klocków, z których 17% jest kolorami przezroczystymi.
+- Najwięcej elementów produkowanych jest z plastiku (ponad 49 tys.), a następnie z papieru/kartonu (już tylko ponad 2 tys.).
+- Lego posiada klocki podzielone na ponad 60 kategorii, z czego najwięcej części należy do kategorii górnych części minifigurek.
+- Istnieje 8 motywów, które nie mają żadnych zestawów.
+- Wiele motywów w Lego ma te same nazwy.
+- Widoczna jest tendencja wzrostowa w liczbie co roku wydawanych motywów zestawów oraz liczby motywów w ramach innych motywów.
+- Liczba zestawów wydawanych w ramach jednego motywu jest raczej stała, choć w ostatnich latach rośnie liczba motywów, które dostają większą liczbę zestawów.
+- W Lego istnieje ponad 300 figurek, które nigdy nie trafiły do żadnego zestawu.
+- Najwięcej kolorów klocków było używanych w latach 2000-2006.
+- Liczba kolorów używanych w ramach jednego zestawu wzrosła z początkowo około 5-6, do kilkunastu obecnie.
+- Liczba kategorii klocków występujących w zestawie wydaje się być skorelowana z liczbą kolorów występujących w zestawie.
+
+
 # Zastosowane biblioteki i powtarzalność
 
 ```{r knitr_setup, echo=FALSE}
@@ -63,11 +89,12 @@ knitr::kable(summary(inventories))
 inventories_by_version <- group_by(inventories, version)%>%summarise(count = n())
 knitr::kable(inventories_by_version)
 p <- (filter(inventories_by_version, version == 1)%>%select(count)/ nlevels(inventories$set_num))[1,]
+p <- p*100
 ```
 
 Rozmiar tabeli: ***`r format(nrow(inventories),big.mark=",",scientific=FALSE)`*** wierszy
 
-Ze względu na to, że tabela jest tak naprawdę tabelą łączącą i składa się z samych identyfikatorów, nie wydaje się potrzebna głębsza analiza jej pól. Warto zauważyć, że stanowcza część zestawów (***`r p`%***) została wypuszczona w tylko jednej wersji.
+Ze względu na to, że tabela jest tak naprawdę tabelą łączącą i składa się z samych identyfikatorów, nie wydaje się potrzebna głębsza analiza jej pól. Warto zauważyć, że stanowcza część zestawów (***`r format(round(p, 2), nsmall = 2)`%***) została wypuszczona w tylko jednej wersji.
 
 ### Sets
 
@@ -106,7 +133,7 @@ ggplotly(w2)
 
 Na powyższych wykresach możemy zobaczyć, że najwięcej zestawów ma rozmiar między 10 a 20 elementów. Od rozmiaru 70-80 elementów liczba zestawów zaczyna spadać. Przy szerokości przedziałów równej 1000 dla dużych zestawów, widzimy że najwięcej zestawów ma rozmiar od 1 tys. do 2 tys. elementów.
 
-```{r sets_years}
+```{r sets_years, echo=FALSE}
 
 psby<-ggplot(sets,
        aes(x = year)) +
@@ -145,7 +172,7 @@ complex_sets <-group_by(inventory_sets, inventory_id)%>%summarise(subsets = n_di
 
 W zbiorze tym mamy ***`r format(nrow(inventory_sets),big.mark=",",scientific=FALSE)`*** wpisów, opisujących ***`r format(nrow(complex_sets),big.mark=",",scientific=FALSE)` zestawów złożonych***.
 
-```{r complex_sets_sizes}
+```{r complex_sets_sizes, echo=FALSE}
 psby<-ggplot(complex_sets,
              aes(x = subsets))+
  geom_histogram(binwidth =1)+
@@ -198,7 +225,7 @@ minifigs_by_inventory <- group_by(inventory_minifigs, inventory_id)%>%summarise(
 
 Zbiór zawiera ***`r format(nrow(inventory_minifigs),big.mark=",",scientific=FALSE)`*** wpisów na temat figurek w ***`r format(nrow(minifigs_by_inventory),big.mark=",",scientific=FALSE)`*** zestawach.
 
-```{r inventory_minifigs_attributes}
+```{r inventory_minifigs_attributes, echo=FALSE}
 psby<-ggplot(inventory_minifigs,
              aes(x = fig_quantity))+
  geom_histogram(binwidth =1)+
@@ -257,9 +284,9 @@ spare_parts <- sum(filter(inventory_parts, is_spare == 't')$part_quantity)
 
 Zbiór posiada ***`r format(nrow(inventory_parts),big.mark=",",scientific=FALSE)`*** wierszy opisujących zastosowanie ***`r format(nlevels(inventory_parts$part_num),big.mark=",",scientific=FALSE)`*** różnych części w zestawach.
 
-Wynika z niego, że ***`r format(round(spare_parts/all_parts, 2), nsmall = 2)`%*** części otrzymywanych w ramach zestawów, to części zapasowe.
+Wynika z niego, że ***`r format(round((spare_parts/all_parts)*100, 2), nsmall = 2)`%*** części otrzymywanych w ramach zestawów, to części zapasowe.
 
-```{r inventory_parts_attributes}
+```{r inventory_parts_attributes, echo=FALSE}
 t<- data.frame(y = c(all_parts- spare_parts, spare_parts), zapasowe = c("nie", "tak"))
 ggplotly(
   ggplot(data=t, aes(x=NA, y=y, fill=zapasowe)) +
@@ -299,7 +326,7 @@ knitr::kable(summary(colors))
 
 Dane w tabeli opisują ***`r format(nrow(colors),big.mark=",",scientific=FALSE)`*** kolorów.
 
-```{r colors_attributes}
+```{r colors_attributes, echo=FALSE}
 by_trans <- group_by(colors, is_trans)%>%summarise(count = n())
 ggplotly(
   ggplot(by_trans, aes(x=NA, y=count, fill=is_trans)) +
@@ -313,6 +340,7 @@ ggplotly(
 )
 
 p <- filter(by_trans, is_trans == 't')$count/sum(by_trans$count)
+p <- p * 100
 ```
 
 Kolory przezroczyste stanowią ***`r format(round(p, 2), nsmall=2)`%*** wszystkich dostępnych kolorów.
@@ -330,7 +358,7 @@ knitr::kable(summary(parts))
 
 Tabela *parts* opisuje ***`r format(nrow(parts),big.mark=",",scientific=FALSE)`*** części Lego. Z porównania tej tabeli oraz danych z tabeli *inventory parts* możemy zauważyć, że liczba wszystkich dostępnych części oraz części używanych w zestawach jest różna (nie wszystkie części mają użycie w zestawach).
 
-```{r parts_materials}
+```{r parts_materials, echo=FALSE}
 psby<-ggplot(parts,
              aes(x = part_material))+
 geom_bar()+
@@ -411,7 +439,7 @@ knitr::kable(summary(parts_relationships))
 
 Dane zawierają ***`r format(nrow(parts_relationships),big.mark=",",scientific=FALSE)`*** wpisów.
 
-```{r parts_relations_attr}
+```{r parts_relations_attr, echo=FALSE}
 psby<-ggplot(group_by(parts_relationships,rel_type)%>%summarise(count= n()),
              aes(x = reorder(rel_type, count, decreasing=TRUE), y = count))+
 geom_bar(stat='identity')+
@@ -460,10 +488,8 @@ knitr::kable(filter(st, is.na(set_num)))
 
 Dokonując pełnego połączenia widzimy motywy, nie posiadające zestawów. Taka informacja niczego nie wnosi do wybranej analizy, stąd wykonam połączenie, wybierające jedynie motywy powiązane z zestawami.
 
-```{r sets_themes_join2,cache = TRUE}
+```{r sets_themes_join2,cache = TRUE, echo=FALSE}
 st <- left_join(sets, themes, join_by(theme_id == id))
-knitr::kable(summary(st))
-knitr::kable(filter(st, is.na(set_num)))
 ```
 
 Dla każdego zestawu znajdźmy najwyższy motyw w hierarchii.
@@ -486,7 +512,7 @@ knitr::kable(head(st))
 
 Teraz możemy przejść do analizy. Dla każdego roku sprawdzimy liczbę wszystkich motywów, liczbę głównych motywów oraz liczbę zestawów dla każdego motywu i motywu głównego. Do obliczeń korzystam z grupowania po ***nazwie motywu***, a nie jego identyfikatorze. Uznaję, że motyw "Star Wars" to motyw "Star Wars" i nie interesują mnie wewnętrzne różnice między nimi.
 
-```{r st_analysis}
+```{r st_analysis, fig.width=10, fig.height=10}
 themes_count_by_year <- st%>%group_by(year)%>%summarise(themes_count = n_distinct(theme_name), primary_themes_count = n_distinct(primary_theme_name))
 themes_count_by_year <- themes_count_by_year%>%gather(type, count, themes_count:primary_themes_count)
 
@@ -502,7 +528,7 @@ geom_bar(stat='identity', position = 'dodge')+
 
 Jak widać, liczba motywów używanych przez Lego rośnie. Oprócz tego widzimy, że w każdym roku pojawia się więcej motywów niż motywów głównych, co ozacza że Lego każdego roku wypuszcza zestawy w różnych grupach, należących do tego samego motywu nadrzędnego.
 
-```{r st_analysis_2, fig.width=15, fig.height=10}
+```{r st_analysis_2, fig.width=12, fig.height=10}
 sets_by_theme <- st%>%group_by(year, theme_name)%>%summarise(sets_count = n_distinct(set_num))
 mean_by_year <- sets_by_theme%>%group_by(year)%>%summarise(mean=(mean(sets_count)), median = median(sets_count))
 
@@ -531,7 +557,7 @@ ggplotly(
 
 ```
 
-```{r, fig.width=15, fig.height=15}
+```{r, fig.width=12, fig.height=12}
 ggplotly(
   ggplot(st, aes(x = year, y = primary_theme_name)) +
     geom_jitter() +
