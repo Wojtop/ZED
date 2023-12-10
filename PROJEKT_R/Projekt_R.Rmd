@@ -8,7 +8,10 @@ output:
     toc_float: true
 ---
 
+# Podsumowanie
+
 # Zastosowane biblioteki i powtarzalność
+
 ```{r knitr_setup, echo=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(cache = FALSE)
@@ -17,6 +20,7 @@ knitr::opts_chunk$set(message =  FALSE)
 knitr::opts_chunk$set(comment =  "")
 knitr::opts_chunk$set(tidy =  TRUE)
 ```
+
 ```{r libraries, echo=TRUE}
 library(DT)
 library(dplyr)
@@ -25,8 +29,6 @@ library(ggplot2)
 library(plotly)
 library(caret)
 library(ggcorrplot)
-library(MLeval)
-
 
 my_seed <- 145381  # numer indeksu jako seed dla operacji losowych
 ```
@@ -37,45 +39,48 @@ prettyTable <- function(table_df, round_digits=2) {
 }
 
 ```
+
 # Dane - tabele, rozmiary zbiorów, podstawowe statystyki
 
-Wtkorzystany zbiór danych składa się z trzech głównych części:
+Wykorzystany zbiór danych składa się z trzech głównych części:
 
-* informacji o zestawach
-* informacji o minigigurkach w zestawach
-* informacjci o częsciach - ich kategorie, kolory, złożone elementy
+-   informacji o zestawach
+-   informacji o minifigurkach w zestawach
+-   informacji o częściach w zestawach - ich kategorie, kolory, złożone elementy
 
-Dane są zawarte w poniższych tabelach, a zawarte w nich dane posiadają niżej przedstawione charakterystyki. Niektóre z pól danych (np. adresy url do obrazków przedstawianjących klocek lub figurkę, identyfikatory) zostały przeze mnie pomienięte we wczytywaniu bądź analizie, ze względu na brak merytorycznego wkładu w analizę. Niektóre kolumny otrzymały również zmienione nazwy, aby ułatwić późniejsze łączenie danych.
+Dane są zawarte w poniższych tabelach, a zawarte w nich parametry posiadają niżej przedstawione charakterystyki. Niektóre z pól danych (np. adresy url do obrazków przedstawiających klocek lub figurkę, identyfikatory) zostały przeze mnie pominięte we wczytywaniu bądź analizie, ze względu na brak merytorycznego wkładu w analizę. Niektóre kolumny otrzymały również zmienione nazwy, aby ułatwić późniejsze łączenie danych.
 
 ## Zestawy
+
 ### Inventories
+
 Tabela pozwalająca połączyć powyższe 3 części w jedną całość.
 
-```{r inventories, cache = TRUE}
+```{r inventories, cache = TRUE, echo=FALSE}
 inventories <- read.csv("data/inventories.csv")%>%mutate(set_num = factor(set_num))
-str(inventories)
 knitr::kable(summary(inventories))
 
 inventories_by_version <- group_by(inventories, version)%>%summarise(count = n())
 knitr::kable(inventories_by_version)
 p <- (filter(inventories_by_version, version == 1)%>%select(count)/ nlevels(inventories$set_num))[1,]
 ```
+
 Rozmiar tabeli: ***`r format(nrow(inventories),big.mark=",",scientific=FALSE)`*** wierszy
 
-Ze względu, że tabela jest tak naprawdę tabelą łączącą i skłąda się z samych identyfikatorów, nie wydaje się potrzebna głębsza analiza jej pól. Warto zauważyć, że stanowcza część zestawów (***`r p`%*** została wypuszczona w tylko jednej wersji.
+Ze względu na to, że tabela jest tak naprawdę tabelą łączącą i składa się z samych identyfikatorów, nie wydaje się potrzebna głębsza analiza jej pól. Warto zauważyć, że stanowcza część zestawów (***`r p`%***) została wypuszczona w tylko jednej wersji.
 
 ### Sets
 
 Tabela zawiera informację o zestawach: w którym roku były wydane, ile mają części, nazwa zestawu oraz motyw zestawu.
 
-```{r sets,cache = TRUE}
+```{r sets,cache = TRUE, echo=FALSE}
 sets <- read.csv("data/sets.csv")%>%mutate(set_num = factor(set_num), name = factor(name), set_num = factor(set_num))%>%rename(set_num_parts = num_parts)%>%select(-img_url)
-str(sets)
 knitr::kable(summary(sets))
 ```
-Tabela daje nam informację, że obecnie dostępnych jest ***`r format(nrow(sets),big.mark=",",scientific=FALSE)`*** zestawów Lego. Należy zwrócić uwagę, że jest to wartość mniejsza, niż liczba w wpisów w tabeli *inventories*. Wynika to z faktu, że część zetawów wystąpiła w różnych wersjach. Informacja o wersji znaduje się w tabeli *inventories*. Z tego też względu w tamtej tabeli ten sam zestaw może występować kilkukrotnie, z inną wersją.
 
-```{r sets_num_parts}
+Tabela daje nam informację, że obecnie dostępnych jest ***`r format(nrow(sets),big.mark=",",scientific=FALSE)`*** zestawów Lego. Należy zwrócić uwagę, że jest to wartość mniejsza, niż liczba w wpisów w tabeli *inventories*. Wynika to z faktu, że część zetawów wystąpiła w różnych wersjach. Informacja o wersji znajduje się w tabeli *inventories*. Z tego też względu w tamtej tabeli ten sam zestaw może występować kilkukrotnie, z inną wersją.
+
+```{r sets_num_parts, echo=FALSE}
 q <- 90
 p <- quantile(sets$set_num_parts, c( q/100))
 filtered <- filter(sets, set_num_parts > 0)%>%mutate(small = set_num_parts <= p[1])
@@ -99,6 +104,8 @@ ggplotly(w1)
 ggplotly(w2)
 ```
 
+Na powyższych wykresach możemy zobaczyć, że najwięcej zestawów ma rozmiar między 10 a 20 elementów. Od rozmiaru 70-80 elementów liczba zestawów zaczyna spadać. Przy szerokości przedziałów równej 1000 dla dużych zestawów, widzimy że najwięcej zestawów ma rozmiar od 1 tys. do 2 tys. elementów.
+
 ```{r sets_years}
 
 psby<-ggplot(sets,
@@ -111,29 +118,33 @@ psby<-ggplot(sets,
 ggplotly(psby)
 
 ```
+
+Widzimy również, że liczba zestawów wydawanych w każdym roku systematycznie rośnie od czasu powstania Lego. Spadek widzimy w latach 2022 i 2023, co może być wynikiem gorszej sytuacji gospodarczej po pandemii koronawirusa, zablokowaniu kanału Sueskiego przez kontenerowiec Evergreen i zerwaniu łańcuchów dostaw, czy wybuchu wojny na Ukrainie i zmniejszeniu się rynku przez sankcje nałożone na Rosję i wycofanie się z tego kraju.
+
 ### Themes
 
-Tabela zawiera informację o motywach zestawów. Motywy są ułożone hierarchicznie - jeden motyw może być zbiorem wielu innych. Motyw posiadający nad sobą motyw macierzysty posiada referencję do niego w polu *parent_id*.
+Tabela zawiera informację o motywach zestawów. Motywy są ułożone hierarchicznie - jeden motyw może być zbiorem wielu innych. Motyw posiadający nad sobą motyw nadrzędny posiada referencję do niego w polu *parent_id*.
 
-```{r themes,cache = TRUE}
+```{r themes,cache = TRUE, echo=FALSE}
 themes <- read.csv("data/themes.csv")%>%mutate(name = factor(name))%>%rename(theme_name = name)
-str(themes)
 knitr::kable(summary(themes))
 ```
-Z powyższych danych widzimy, że obecnie w Lego mamy dostępne ***`r format(nrow(themes),big.mark=",",scientific=FALSE)`*** motywów, z czego aż ***`r format(nrow(filter(themes, is.na(parent_id))),big.mark=",",scientific=FALSE)`*** to motywy będące korzeniami swoich hierarchii. Możemy też zauważyć, że wśród motywów mamy jedynie ***`r format(nlevels(themes$theme_name),big.mark=",",scientific=FALSE)`*** unikalnych nazw, co ozacza że część motywów dzili nazwy (np. występują 4 motywy o nazwie "Star Wars").
+
+Z powyższych danych widzimy, że obecnie w Lego mamy dostępne ***`r format(nrow(themes),big.mark=",",scientific=FALSE)`*** motywów, z czego aż ***`r format(nrow(filter(themes, is.na(parent_id))),big.mark=",",scientific=FALSE)`*** to motywy będące korzeniami swoich hierarchii. Możemy też zauważyć, że wśród motywów mamy jedynie ***`r format(nlevels(themes$theme_name),big.mark=",",scientific=FALSE)`*** unikalnych nazw, co oznacza że część motywów dzieli nazwy (np. występują 4 motywy o nazwie "Star Wars").
 
 ### Inventory sets
 
-Niektóre zestawy mogą składać się kilku innych. Tabela *inventory_sets* zawiera informację, ile zestawów o identyfikatorze *set_num* zawiera zestaw nadzrzędny.
+Niektóre zestawy mogą składać się kilku innych. Tabela *inventory_sets* zawiera informację, ile zestawów o identyfikatorze *set_num* zawiera zestaw nadrzędny.
 
-```{r inventory_sets,cache = TRUE}
+```{r inventory_sets,cache = TRUE, echo=FALSE}
 inventory_sets <- read.csv("data/inventory_sets.csv")%>%mutate(set_num = factor(set_num))%>%rename(set_quantity = quantity)
-str(inventory_sets)
 knitr::kable(summary(inventory_sets))
 
 complex_sets <-group_by(inventory_sets, inventory_id)%>%summarise(subsets = n_distinct(set_num))
 ```
+
 W zbiorze tym mamy ***`r format(nrow(inventory_sets),big.mark=",",scientific=FALSE)`*** wpisów, opisujących ***`r format(nrow(complex_sets),big.mark=",",scientific=FALSE)` zestawów złożonych***.
+
 ```{r complex_sets_sizes}
 psby<-ggplot(complex_sets,
              aes(x = subsets))+
@@ -145,23 +156,26 @@ psby<-ggplot(complex_sets,
 ggplotly(psby)
 ```
 
+Najwięcej zestawów złożonych składa się z dwóch i trzech mniejszych zestawów.
+
 ## Minifigurki
 
 ### Minifigs
 
 Tabela zawiera informację o nazwie oraz liczbie części minifigurki.
-```{r minifigs,cache = TRUE}
+
+```{r minifigs,cache = TRUE, echo=FALSE}
 minifigs <- read.csv("data/minifigs.csv")%>%mutate(name = factor(name), fig_num = factor(fig_num))%>%rename(fig_name = name, fig_num_parts = num_parts)%>%select(-img_url)
-str(minifigs)
 knitr::kable(summary(minifigs))
 ```
+
 Tabela zawiera informację o ***`r format(nrow(minifigs),big.mark=",",scientific=FALSE)`*** minifigurkach. Warto zwrócić uwagę, że w zbiorze występuje jedynie ***`r format(nlevels(minifigs$fig_name),big.mark=",",scientific=FALSE)`*** unikalnych nazw figurek, co oznacza, że część różnych figurek posiada tą samą nazwę.
 
-```{r minifigs_attributes}
+```{r minifigs_attributes, echo=FALSE}
 psby<-ggplot(minifigs,
              aes(x = fig_num_parts))+
  geom_histogram(binwidth =1)+
-  ggtitle("Liczba elementów wchodzących w skład figurki (skala logarytmiczna)") +
+  ggtitle("Liczba elementów wchodzących w skład figurki") +
   xlab("Liczba elementów") +
   ylab("Liczba figurek") +
   scale_y_log10() +
@@ -169,41 +183,44 @@ psby<-ggplot(minifigs,
 ggplotly(psby)
 ```
 
+Powyższy rozkład złożoności figurek pokazuje, że najwięcej figurek składa się z 3 do 6 elementów.
+
 ### Inventory minifigs
 
-Tabela zawiera informację, ile sztuk danej figurki występuje w danym zestwie.
+Tabela zawiera informację, ile sztuk danej figurki występuje w danym zestawie.
 
-```{r inventory_minifigs,cache = TRUE}
+```{r inventory_minifigs,cache = TRUE, echo = FALSE}
 inventory_minifigs <- read.csv("data/inventory_minifigs.csv")%>%mutate(fig_num = factor(fig_num))%>%rename(fig_quantity = quantity)
-str(inventory_minifigs)
 knitr::kable(summary(inventory_minifigs))
 
 minifigs_by_inventory <- group_by(inventory_minifigs, inventory_id)%>%summarise(different_minifigs = n_distinct(fig_num), fig_sum = sum(fig_quantity))
 ```
+
 Zbiór zawiera ***`r format(nrow(inventory_minifigs),big.mark=",",scientific=FALSE)`*** wpisów na temat figurek w ***`r format(nrow(minifigs_by_inventory),big.mark=",",scientific=FALSE)`*** zestawach.
 
 ```{r inventory_minifigs_attributes}
 psby<-ggplot(inventory_minifigs,
              aes(x = fig_quantity))+
  geom_histogram(binwidth =1)+
-  ggtitle("Częstotliwość wystąpień tej samej figurki w ramach zestawu (skala logarytmiczna)") +
-  xlab("Ilośc tej samej figurki") +
+  ggtitle("Częstotliwość wystąpień tej samej figurki w ramach zestawu") +
+  xlab("Ilość tej samej figurki") +
   ylab("Liczba wystąpień") +
   scale_y_log10() +
   theme_bw()
 ggplotly(psby)
 ```
 
-Zgrupowanie danych w ramach zestawów pozwala otrzymać następujące dane na temat ogólnej liczby figurek w zestawach oraz liczby unikalnych figurek w ramach zestawu.
-Należy pamiętać, że na tym etapie analiza nie uwzględnia zestawów nie posiadających figurek.
+Z wykresu wynika, że najczęściej w ramach jednego zestawu dana figurka występuje jeden raz, co potwierdza również tabelka ze statystyką, w której widzimy 3 kwantyl równy 1, co oznacza, że co najmniej 75% figurek występuje 1 raz w ramach jednego zestawu.
 
-```{r inventory_minifigs_grouped}
+Zgrupowanie danych w ramach zestawów pozwala otrzymać poniższe dane na temat ogólnej liczby figurek w zestawach oraz liczby unikalnych figurek w ramach zestawu. Należy pamiętać, że na tym etapie analiza nie uwzględnia zestawów nie posiadających figurek.
+
+```{r inventory_minifigs_grouped, echo=FALSE}
 knitr::kable(summary(minifigs_by_inventory))
 
 psby<-ggplot(minifigs_by_inventory,
              aes(x = different_minifigs))+
 geom_histogram(binwidth =1)+
-  ggtitle("Liczba różnych figurek w ramach zestawu (skala logarytmiczna)") +
+  ggtitle("Liczba różnych figurek w ramach zestawu") +
   xlab("Ilość różnych figurek") +
   ylab("Liczba zestawów") +
   scale_y_log10() +
@@ -213,8 +230,8 @@ ggplotly(psby)
 psby<-ggplot(minifigs_by_inventory,
              aes(x = fig_sum))+
 geom_histogram(binwidth =1)+
-  ggtitle("Liczba figurek w ramach zestawu (skala logarytmiczna)") +
-  xlab("Ilość figurek") +
+  ggtitle("Łączna liczba figurek w ramach zestawu") +
+  xlab("Liczba figurek") +
   ylab("Liczba zestawów") +
   scale_y_log10() +
   theme_bw()
@@ -222,20 +239,22 @@ ggplotly(psby)
 
 ```
 
+Na powyższym wykresie widać, że wśród zestawów posiadających minifigurki, najczęściej występuje jedna figurka na zestaw.
+
 ## Części
 
 ### Inventory parts
 
 Tabela zawiera listę części występujących w ramach zestawu. Zawiera informację o identyfikatorze części, jej ilości, kolorze (ta sama część może występować w ramach zestawu w różnych kolorach) oraz czy część jest zapasowa (nadmiarowa w zestawie względem wymaganej liczby).
 
-```{r inventory_parts,cache = TRUE}
+```{r inventory_parts,cache = TRUE, echo=FALSE}
 inventory_parts <- read.csv("data/inventory_parts.csv")%>%mutate(is_spare = factor(is_spare), part_num = factor(part_num))%>%rename(part_quantity = quantity)%>%select(-img_url)
-str(inventory_parts)
 knitr::kable(summary(inventory_parts))
 
 all_parts <- sum(inventory_parts$part_quantity)
 spare_parts <- sum(filter(inventory_parts, is_spare == 't')$part_quantity)
 ```
+
 Zbiór posiada ***`r format(nrow(inventory_parts),big.mark=",",scientific=FALSE)`*** wierszy opisujących zastosowanie ***`r format(nlevels(inventory_parts$part_num),big.mark=",",scientific=FALSE)`*** różnych części w zestawach.
 
 Wynika z niego, że ***`r format(round(spare_parts/all_parts, 2), nsmall = 2)`%*** części otrzymywanych w ramach zestawów, to części zapasowe.
@@ -258,22 +277,28 @@ q<-95
 psby<-ggplot(filter(inventory_parts, part_quantity <= quantile(inventory_parts$part_quantity, q/100)),
              aes(x = part_quantity))+
 geom_histogram(binwidth =1)+
-  ggtitle(sprintf("Częstotliwość rozkładu parametru \"part_quantity\" (0-%d%% wpisów)", q)) +
+  ggtitle(sprintf("Częstotliwość rozkładu parametru \"part_quantity\" (percentyl %d)", q)) +
   xlab("Ilość sztuk") +
   ylab("Liczba wystąpień") +
   scale_y_continuous(labels = scales::comma) +
   theme_bw()
 ggplotly(psby)
 ```
+
+95% elementów występuje w jednym kolorze w ramach zestawu do 10 razy. Jednocześnie mogą one wystąpić w zestawie w sumarycznie większej liczbie, lecz w różnych kolorach.
+
+
 ### Colors
+
 Tabela zawiera dane o kolorach klocków. Zawiera nazwę koloru, jego wartość RGB zapisaną szesnastkowo i informację, czy jest przezroczysty.
 
-```{r colors,cache = TRUE}
+```{r colors,cache = TRUE, echo=FALSE}
 colors <- read.csv("data/colors.csv")%>%mutate(is_trans = factor(is_trans), name = factor(name))%>%rename(color_name = name)
-str(colors)
 knitr::kable(summary(colors))
 ```
+
 Dane w tabeli opisują ***`r format(nrow(colors),big.mark=",",scientific=FALSE)`*** kolorów.
+
 ```{r colors_attributes}
 by_trans <- group_by(colors, is_trans)%>%summarise(count = n())
 ggplotly(
@@ -286,21 +311,24 @@ ggplotly(
     scale_y_continuous(labels = scales::comma) +
     theme_bw()
 )
+
+p <- filter(by_trans, is_trans == 't')$count/sum(by_trans$count)
 ```
 
+Kolory przezroczyste stanowią ***`r format(round(p, 2), nsmall=2)`%*** wszystkich dostępnych kolorów.
 
 ### Parts i part categories
+
 Tabela parts zawiera katalog części Lego. Niektóre części mogą składać się z kilku elementów. Zawiera nazwę części oraz identyfikator kategorii, do której należy część.Z kolei tabela part_categories zawiera listę kategorii, do których są klasyfikowane klocki. Aby skrócić analizę, pozwoliłem sobie od razu połączyć te dwie tabele i pokazać ich połączony rozkład atrybutów.
 
 #### Parts
 
-```{r parts,cache = TRUE}
+```{r parts,cache = TRUE, echo=FALSE}
 parts <- read.csv("data/parts.csv")%>%mutate(name = factor(name), part_num=factor(part_num), part_material = factor(part_material))%>%rename(part_name = name)
-str(parts)
 knitr::kable(summary(parts))
 ```
 
-Tabela parts opisuje ***`r format(nrow(parts),big.mark=",",scientific=FALSE)`*** części Lego. Z prównania tej tabeli oraz danych z tabeli inventory parts, możemy zauważyć, że liczba wszystkich dostępnych części oraz części używanych w zestawach jest różna (nie wszystkie części mają użycie w zestawach).
+Tabela *parts* opisuje ***`r format(nrow(parts),big.mark=",",scientific=FALSE)`*** części Lego. Z porównania tej tabeli oraz danych z tabeli *inventory parts* możemy zauważyć, że liczba wszystkich dostępnych części oraz części używanych w zestawach jest różna (nie wszystkie części mają użycie w zestawach).
 
 ```{r parts_materials}
 psby<-ggplot(parts,
@@ -316,15 +344,18 @@ geom_bar()+
 ggplotly(psby)
 ```
 
+Najczęściej używanym materiałem klockach Lego jest plastik.
+
 #### Parts categories
-```{r parts_categories,cache = TRUE}
+
+```{r parts_categories,cache = TRUE, echo=FALSE}
 parts_cat <- read.csv("data/part_categories.csv")%>%mutate(name = factor(name))%>%rename(category_name = name)
-str(parts_cat)
 knitr::kable(summary(parts_cat))
 ```
+
 Tabela part categories opisuje ***`r format(nrow(parts_cat),big.mark=",",scientific=FALSE)`*** kategorii części Lego.
 
-```{r parts_categories_attr, fig.height=10}
+```{r parts_categories_attr, fig.height=10, echo=FALSE}
 parts_categories <- full_join(parts, parts_cat, join_by(part_cat_id == id))
 knitr::kable(summary(parts_categories))
 
@@ -339,40 +370,45 @@ geom_bar(stat='identity')+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ggplotly(psby)
 ```
+
+Najczęstszą kategorią w zestawach są górne części minifigurek.
+
 ### Elements
 
-Jak wspomniano wyżej, niektóre części mogą składać się z kilku klocków. W tabeli elements zebrano informacje, do jakich części przynależą poszczególne klocki.
+Jak wspomniano wyżej, niektóre części mogą składać się z kilku klocków. W tabeli *elements* zebrano informacje, do jakich części przynależą poszczególne klocki.
 
-```{r elements,cache = TRUE}
+```{r elements,cache = TRUE, echo=FALSE}
 elements <- read.csv("data/elements.csv")%>%mutate(part_num = factor(part_num))
-str(elements)
 knitr::kable(summary(elements))
 
-elements_grouped <- group_by(elements, part_num) %>%summarise(elements_count = n(), distinct_elements = n_distinct(part_num))
-summary(elements_grouped$elements_count)
+elements_grouped <- group_by(elements, part_num) %>%summarise(elements_count = n(), distinct_elements = n_distinct(element_id))
 ```
 
 Tabela zawiera ***`r format(nrow(elements),big.mark=",",scientific=FALSE)`*** wpisów zawierających opis ***`r format(nrow(elements_grouped),big.mark=",",scientific=FALSE)`*** złożonych części.
 
 Charakterystyka liczby klocków w elemencie złożonym:
+
 ```{r elements_count_stat}
 summary(elements_grouped$elements_count)
 ```
+
 Charakterystyka liczby unikalnych klocków w elemencie złożonym:
+
 ```{r elements_count_stat_2}
 summary(elements_grouped$distinct_elements)
 ```
 
+Co zaskakujące wynika z tego, że większość części złożonych składa się z jednego elementu.
 
 ### Part relationships
 
 Tabela zawiera informacje o relacjach zachodzących między częściami.
 
-```{r parts_relationships,cache = TRUE}
+```{r parts_relationships,cache = TRUE, echo=FALSE}
 parts_relationships <- read.csv("data/part_relationships.csv")%>%mutate(rel_type = factor(rel_type), parent_part_num = factor(parent_part_num), child_part_num = factor(child_part_num))
-str(parts_relationships)
 knitr::kable(summary(parts_relationships))
 ```
+
 Dane zawierają ***`r format(nrow(parts_relationships),big.mark=",",scientific=FALSE)`*** wpisów.
 
 ```{r parts_relations_attr}
@@ -388,7 +424,9 @@ geom_bar(stat='identity')+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ggplotly(psby)
 ```
+
 # Analizy
+
 ```{r knitr_setup3, echo=FALSE}
 # knitr::opts_chunk$set(echo = TRUE)
 # knitr::opts_chunk$set(cache = TRUE)
@@ -400,11 +438,11 @@ ggplotly(psby)
 
 W ramach projektu chciałbym skupić się na analizie następujących elementów na przestrzeni lat:
 
-- jak zmieniała się liczba motywów zestawów Lego i ile zestawów należy do każdego z głównych motywów
-- jak zmieniała się liczba figurek w zestawach oraz złożoność figurek
-- jak zmieniała się liczba kolorów stosowanych w zestawach
+-   jak zmieniała się liczba motywów zestawów Lego i ile zestawów należy do każdego z głównych motywów
+-   jak zmieniała się liczba figurek w zestawach oraz złożoność figurek
+-   jak zmieniała się liczba kolorów stosowanych w zestawach
 
-Ponieważ rok dostępny jest tylko w tabeli *sets*, wyekstrachuję rok i numer zestawu do osobnej tabeli, którą później będę mógł łączyć z innymi. W ten sposób uzyskam dostęp do roku w analizach innych tabel.
+Ponieważ rok dostępny jest tylko w tabeli *sets*, wyekstrahuję rok i numer zestawu do osobnej tabeli, którą później będę mógł łączyć z innymi. W ten sposób uzyskam dostęp do roku w analizach innych tabel.
 
 ```{r year_table,cache = TRUE}
 sets_years <- select(sets, set_num, year)
@@ -412,20 +450,22 @@ sets_years <- select(sets, set_num, year)
 
 ## Liczba motywów i zestawów w motywach
 
-W celu tej analizy połączymy tabele *sets* oraz *themes*. 
+W celu tej analizy połączymy tabele *sets* oraz *themes*.
 
 ```{r sets_themes_join,cache = TRUE}
 st <- full_join(sets, themes, join_by(theme_id == id))
 knitr::kable(summary(st))
-filter(st, is.na(set_num))
+knitr::kable(filter(st, is.na(set_num)))
 ```
-Dokonując pełnego połączenia widzimy motywy, nie posiadające zestawów. Są to prawdopodobnie motywy nadrzędne, do których bezpośrednio nie został przypisany żaden zestaw. Taka informacja niczego nie wnosi do wybranej analizy, stąd wykonam połączenie, wybierające jedynie motywy powiązane z zestawami.
+
+Dokonując pełnego połączenia widzimy motywy, nie posiadające zestawów. Taka informacja niczego nie wnosi do wybranej analizy, stąd wykonam połączenie, wybierające jedynie motywy powiązane z zestawami.
 
 ```{r sets_themes_join2,cache = TRUE}
 st <- left_join(sets, themes, join_by(theme_id == id))
 knitr::kable(summary(st))
-filter(st, is.na(set_num))
+knitr::kable(filter(st, is.na(set_num)))
 ```
+
 Dla każdego zestawu znajdźmy najwyższy motyw w hierarchii.
 
 ```{r primary_theme,cache = TRUE}
@@ -443,7 +483,8 @@ st<-st%>%mutate(primary_theme_name = filter(themes, id == primary_theme_id )$the
 knitr::kable(summary(st))
 knitr::kable(head(st))
 ```
-Teraz możemy przejść do analizy. Dla każdego roku sprawdzimy liczbę wszystkich motywów, liczbę głównych motywów oraz liczbę zestawów dla każdego motywu i motywu głównego. Do obliczeń korzytam z grupowania po ***nazwie motywu***, a nie jego identyfikatorze. Uznaję, że motyw "Star Wars" to motyw "Star Wars" i nie interesują mnie wenętrzne różnice między nimi.
+
+Teraz możemy przejść do analizy. Dla każdego roku sprawdzimy liczbę wszystkich motywów, liczbę głównych motywów oraz liczbę zestawów dla każdego motywu i motywu głównego. Do obliczeń korzystam z grupowania po ***nazwie motywu***, a nie jego identyfikatorze. Uznaję, że motyw "Star Wars" to motyw "Star Wars" i nie interesują mnie wewnętrzne różnice między nimi.
 
 ```{r st_analysis}
 themes_count_by_year <- st%>%group_by(year)%>%summarise(themes_count = n_distinct(theme_name), primary_themes_count = n_distinct(primary_theme_name))
@@ -489,6 +530,7 @@ ggplotly(
 )
 
 ```
+
 ```{r, fig.width=15, fig.height=15}
 ggplotly(
   ggplot(st, aes(x = year, y = primary_theme_name)) +
@@ -499,12 +541,12 @@ ggplotly(
    ylab("Motyw")
 )
 ```
-Patrząc na powyższe wykresy można stwierdzić, że wraz z biegiem lat liczba zestawów w ramach motywów nie zmienia się znacząco. Kwantyla oraz mediana dla motywów pozostają w miarę stabilne i zbliżone, co ozncza że każdy motyw co roku dostaje mniej więcej podobną liczbę zestawów co inne. Uwagę jednak zwraca rosnąca w latach dwutysięcznych liczba outlierów. Ozancza to, ze kilka motywów otrzymuje zdecydowanie więcej zestawów, niż reszta.
 
+Patrząc na powyższe wykresy można stwierdzić, że wraz z biegiem lat liczba zestawów w ramach motywów nie zmienia się znacząco. Kwantyl oraz mediana dla motywów pozostają w miarę stabilne i zbliżone, co oznacza że każdy motyw co roku dostaje mniej więcej podobną liczbę zestawów co inne. Uwagę jednak zwraca rosnąca w latach dwutysięcznych liczba outlierów. Oznacza to, że kilka motywów otrzymuje zdecydowanie więcej zestawów, niż reszta.
 
 ## Liczba figurek w zestawach oraz złożoność figurek
 
-Aby przeprowadzić tę analizę musimy połaczyć 3 tabele: *minifigs, invenotry_minifigs, inventories* oraz dodać do nich inforamcję o roku, z utworzonej wcześniej tabeli pomocniczej.
+Aby przeprowadzić tę analizę musimy połączyć 3 tabele: *minifigs, invenotry_minifigs, inventories* oraz dodać do nich informację o roku, z utworzonej wcześniej tabeli pomocniczej.
 
 ```{r minifigs_analysis_join}
 
@@ -513,6 +555,7 @@ mfdf <- full_join(inventories, mfdf, join_by(id == inventory_id))
 mfdf <- full_join(sets_years, mfdf, by='set_num')
 knitr::kable(summary(mfdf))
 ```
+
 W każdej z kolumn utworzonego zbioru mamy wartości puste. Przyjrzyjmy się, co one oznaczają:
 
 ```{r}
@@ -520,14 +563,16 @@ t <- mfdf%>%filter(is.na(set_num))
 knitr::kable(summary(t))
 knitr::kable(head(t))
 ```
+
 Puste pola w kolumnach *set_num, year, id, version, fig_quantity* wynikają z istnienia figurek, które nigdy nie trafiły do żadnego zestawu. Na podstawie powyższego zbioru możemy zobaczyć, że jest ich ***`r format(nrow(t),big.mark=",",scientific=FALSE)`***. Usuńmy te wiersze ze zbioru.
 
 ```{r}
-t <- mfdf%>%filter(! is.na(set_num))
-knitr::kable(summary(t))
-knitr::kable(head(t))
+mfdf <- mfdf%>%filter(! is.na(set_num))
+knitr::kable(summary(mfdf))
+knitr::kable(head(mfdf))
 ```
-Puste wartości w kolumnach *fig_name, fig_num_parts, fig_quantity* wynikają z zestawów, które nie mają figurek. Zestawów takich jest ***`r format(nrow(filter(t, is.na(fig_num) & is.na(fig_num_parts) & is.na(fig_name) & is.na(fig_quantity) )),big.mark=",",scientific=FALSE)`***. Usuńmy te wpisy ze zbioru
+
+Puste wartości w kolumnach *fig_name, fig_num_parts, fig_quantity* wynikają z zestawów, które nie mają figurek. Zestawów takich jest ***`r format(nrow(filter(mfdf, is.na(fig_num) & is.na(fig_num_parts) & is.na(fig_name) & is.na(fig_quantity) )),big.mark=",",scientific=FALSE)`***. Jest to liczba większa niż liczba zestawów. Mamy taką sytuację, ponieważ w połączonej tabeli mamy również zestawy złożone, do których nie są przypisane figurki (ale do ich składowych już tak) oraz część zestawów występuje w wielu wersjach. Usuńmy te wpisy ze zbioru.
 
 ```{r}
 mfdf <- filter(mfdf, !is.na(fig_num) & !is.na(fig_num_parts) & !is.na(fig_name) & !is.na(fig_quantity))
@@ -535,9 +580,9 @@ knitr::kable(summary(mfdf))
 knitr::kable(head(mfdf))
 ```
 
-Ostatecznie otrzymujemy oczysczony zbiór bez wartości pustych, który zawiera ***`r format(nrow(mfdf),big.mark=",",scientific=FALSE)`*** wpisów, opisujących ile i jakich figurek należy do jakiego zestawu oraz ile te figurki mają części. 
+Ostatecznie otrzymujemy oczyszczony zbiór bez wartości pustych, który zawiera ***`r format(nrow(mfdf),big.mark=",",scientific=FALSE)`*** wpisów, opisujących ile i jakich figurek należy do jakiego zestawu oraz ile te figurki mają części.
 
-Sprawdźmy, jak wygląda rozkład liczby fiurek w zestawach.
+Sprawdźmy, jak wygląda rozkład liczby figurek w zestawach.
 
 ```{r minifigs_analysis}
 
@@ -560,13 +605,14 @@ p99 <- quantile(by_year$different_figs, 0.99)
 ggplotly(
 ggplot(by_year, aes(x = year, y = different_figs)) +
   geom_boxplot(outlier.shape = NA)+ 
-  ggtitle("Liczba różncych figurek per zestaw w kolejnych latach (percentyl 99)")+ 
+  ggtitle("Liczba różnych figurek per zestaw w kolejnych latach (percentyl 99)")+ 
   xlab("Rok") +
-  ylab("Suma figurek")+ 
+  ylab("Liczba różnych figurek")+ 
   ylim(0, p99)+
 theme_bw()  
 )
 ```
+
 Na powyższych wykresach widzimy, że zawartość figurek w ramach zestawów jak i ich różnorodność jest raczej stała i są to najczęściej 2 figurki. Najwięcej figurek można znaleźć w zestawach z lat 2004-2010, kiedy do zestawów trafiały najczęściej 3-4 figurki.
 
 Teraz przeanalizujmy złożoność figurek na przestrzeni lat.
@@ -594,9 +640,10 @@ ggplot(complexity, aes(x = year, y = fig_num_parts)) +
 theme_bw()  
 )
 ```
-Na powyższych dancyh widać, że złożoność figurek jest raczej stała i na poziomie 3-5 części. Jednak na drugim wykresie widzimy rosnącą liczbę outlierów, czyli figurek o większej złożoności niż standardowa.
 
-Poniższe zestawianie przedstawia, jakie motywy posidały najwięcej złożonych figurek i w jakim okresie.
+Na powyższych danych widać, że złożoność figurek jest raczej stała i na poziomie 3-5 części. Jednak na drugim wykresie widzimy rosnącą liczbę outlierów, czyli figurek o większej złożoności niż standardowa.
+
+Poniższe zestawianie przedstawia, jakie motywy posiadły najwięcej złożonych figurek i w jakim okresie.
 
 ```{r, fig.height=10, fig.width=10}
 high_complex <- filter(mfdf, fig_num_parts >= p95)%>%inner_join(st, by='set_num')%>%group_by(primary_theme_name, year.x)%>%summarise(figures = n_distinct(fig_name))%>%rename(year = year.x)
@@ -617,8 +664,7 @@ ggplot( filter(mfdf, fig_num_parts >= p95)%>%inner_join(st, by='set_num')%>%rena
 
 ## Liczba kolorów stosowanych w zestawach
 
-Ostatnią anlizą, której chciałbym się podjąć, jest zbadanie liczby kolorów klocków na przstrzeni lat oraz tego ile kolorów przeciętnie występuje w zestawie.
-
+Ostatnią analizą, której chciałbym się podjąć, jest zbadanie liczby kolorów klocków na przestrzeni lat oraz tego ile kolorów przeciętnie występuje w zestawie.
 
 W tym celu na początek połączymy tabele *inventories, inventory_parts* zwierające informacje o częściach w zestawach, również ich kolory. W analizie zawartości tabeli *colors* możemy zauważyć, że nie ma duplikatów wśród nazw kolorów (mamy tyle nazw co identyfikatorów), stąd nie będę dołączać tabeli *colors*, a analizę oprę na identyfikatorach kolorów.
 
@@ -637,6 +683,7 @@ ggplotly(
 )
 
 ```
+
 Widzimy, że najwięcej kolorów było stosowanych w zestawach z lat 2000-2006. Po roku 2006 widzimy tendencję wzrostową, jednakże nie tak gwałtowną jak wcześniej. Generalna tendencja jest wzrostowa, czyli klocki mają coraz więcej kolorów.
 
 Teraz sprawdźmy, jak zmienia się liczba użytych kolorów ramach zestawu.
@@ -655,7 +702,8 @@ ggplotly(
 )
 
 ```
-Z powyższego wykresy możemy wnioskować, że obecnie w ramach jednego zestawu najczęściej stosuje się koło kilkunastu kolorów. Do roku 1997 w większości przypadków było to mniej niż 10 kolorów. Od tamtego czasu zaczęło się pojawiać coraz więcej wielokolorowych zestawów (rosnąca liczba outlierów), po czym w roku 2003 zaczął się systematyczny wzrost. Wzrosła zarówno mediana kolorów, z około 5-6 w latach 90 i wcześniej, do 9-12 w drugim dziesięcileciu lat dwutysięcznych. Również "wąsy" rosnące w latach dwutysięcznych wskazują na rosnącą liczbę zestawów o kolorsytyce znacząco większej, niż większość zestawów. Podsumowując wszystko razem: najczęstsza liczba kolorów w zestawach wzrosła od około 5-6 do 9-12 oraz wzrosła liczba zestawów, które używają większej liczby kolorów niż większość.
+
+Z powyższego wykresy możemy wnioskować, że obecnie w ramach jednego zestawu najczęściej stosuje się koło kilkunastu kolorów. Do roku 1997 w większości przypadków było to mniej niż 10 kolorów. Od tamtego czasu zaczęło się pojawiać coraz więcej wielokolorowych zestawów (rosnąca liczba outlierów), po czym w roku 2003 zaczął się systematyczny wzrost. Wzrosła zarówno mediana kolorów, z około 5-6 w latach 90 i wcześniej, do 9-12 w drugim dziesięcioleciu lat dwutysięcznych. Również "wąsy" rosnące w latach dwutysięcznych wskazują na rosnącą liczbę zestawów o kolorystyce znacząco większej, niż większość zestawów. Podsumowując wszystko razem: najczęstsza liczba kolorów w zestawach wzrosła od około 5-6 do 9-12 oraz wzrosła liczba zestawów, które używają większej liczby kolorów niż większość.
 
 # Dalsze predykcje
 
@@ -663,7 +711,7 @@ W ramach projektu chciałbym podjąć się utworzenia modelu, który pozwoli prz
 
 ## Zbiór danych
 
-Aby to osiągnąć, zbierzmy w jeden zestawnasępujące dane: rozmiar zestawu, motyw nadrzędny, rok, liczbę kategorii klocków w zestawie, liczbę użytych kolorów w zestawie. Warto zauważyć, że nie każdy zestaw ma figurki oraz nie każdy zestaw posiada części, stąd w wynikowym zbiorze mogą wystąpić wartości puste, które musimy zastąpić zerami. 
+Aby to osiągnąć, zbierzmy w jeden zestaw następujące dane: rozmiar zestawu, motyw nadrzędny, rok, liczbę kategorii klocków w zestawie, liczbę użytych kolorów w zestawie. Warto zauważyć, że nie każdy zestaw ma figurki oraz nie każdy zestaw posiada części, stąd w wynikowym zbiorze mogą wystąpić wartości puste, które musimy zastąpić zerami.
 
 Początkowo chciałem analizować inny problem i w danych przekazywanych do modelu przekazywać więcej informacji. Niestety ze względu na dużą liczbę danych kategorycznych w zbiorze, posiadających setki wartości, złożoność i czas obliczeń nie pozwoliły mi przeprowadzić takiej predykcji.
 
@@ -687,11 +735,12 @@ knitr::kable(summary(df))
 knitr::kable(head(df))
 
 ```
-Zbiór posida ***`r format(nrow(df),big.mark=",",scientific=FALSE)`*** wpisów, czyli tyle co liczba zetawów w tabeli *sets*.
+
+Zbiór posiada ***`r format(nrow(df),big.mark=",",scientific=FALSE)`*** wpisów, czyli tyle co liczba zestawów w tabeli *sets*.
 
 ## Korelacja pomiędzy atrybutami liczbowymi zbioru
 
-Na poniższej wizualizacji możemy zobaczyć wykres korealcji pomiędzy poszczególnymi parametrami liczbowymi zbioru. Niestety nie można było na nim uwzględnić nazwy motywu, ze względu na jego nieliczbowy format.
+Na poniższej wizualizacji możemy zobaczyć wykres korelacji pomiędzy poszczególnymi parametrami liczbowymi zbioru. Niestety nie można było na nim uwzględnić nazwy motywu, ze względu na jego nieliczbowy format.
 
 ```{r}
 corr <- round(cor(df%>%select(-primary_theme_name)%>%mutate(has_figs = as.numeric(has_figs))), 1)
@@ -701,16 +750,19 @@ ggplotly(
 )
 
 ```
-Najbardziej widocznymi powiązaniami są liczba kategorii klocków wraz z liczbą kolorów, a także liczba figurek z liczbą kategorii. Zaskakujący wydaje się niskie powiązanie liczby części w zestawie z liczbą figurek. Niskie powiązanie roku z posiadaniem figurek jest mniej niespodziewane, zwłaszcza w związku z wcześniejszą analizą, która wykazała, że liczba figurek w zestawach nie doznała zanczącej zmiany w czasie. Jednak ze względu na małą liczbę parametrów liczbowych, pozostawię te dane w zbiorze dla modelu.
+
+Najbardziej widocznymi powiązaniami są liczba kategorii klocków wraz z liczbą kolorów, a także liczba figurek z liczbą kategorii. Zaskakujący wydaje się niskie powiązanie liczby części w zestawie z liczbą figurek. Niskie powiązanie roku z posiadaniem figurek jest mniej niespodziewane, zwłaszcza w związku z wcześniejszą analizą, która wykazała, że liczba figurek w zestawach nie doznała znaczącej zmiany w czasie. Jednak ze względu na małą liczbę parametrów liczbowych, pozostawię te dane w zbiorze dla modelu.
 
 ## Budowa modelu
 
-```{r prediction, cache=TRUE}
+Ze względu na nierówny rozkład motywów (niektóre występują tylko po kilka razy) zdecydowałem się podzielić zbiór danych na testowy i treningowy ze względu na ten parametr. Wcześniejsza weryfikacja wykazała, że nie zmienia to skrzywienia parametru decyzyjnego.
+
+```{r prediction_train_control, cache=TRUE}
 
 inTraining <- 
     createDataPartition(
         # atrybut do stratyfikacji
-        y = df$has_figs,
+        y = df$primary_theme_name,
         # procent w zbiorze uczącym
         p = .75,
         # chcemy indeksy a nie listę
@@ -723,34 +775,33 @@ knitr::kable(summary(training))
 knitr::kable(summary(testing))
 ```
 
-Zbiór treningowy zawiera ***`r format(nrow(training),big.mark=",",scientific=FALSE)`*** wierszy, a testowy ***`r format(nrow(testing),big.mark=",",scientific=FALSE)`***. Warto zauważyć, że mamy w nimch nierównomiernie rozłożone klasy: klasy *FALSE* jest więcej w obydwu zbiorach.
+Zbiór treningowy zawiera ***`r format(nrow(training),big.mark=",",scientific=FALSE)`*** wierszy, a testowy ***`r format(nrow(testing),big.mark=",",scientific=FALSE)`***. Warto zauważyć, że mamy w nich nierównomiernie rozłożone klasy: klasy *FALSE* jest więcej w obydwu zbiorach.
 
-```{r, cache=TRUE}
+```{r prediction, cache=TRUE}
 set.seed(my_seed)
 ctrl <- trainControl(
-    method = "repeatedcv",
-    number = 5,
-    repeats = 2,
-    savePredictions = T
-
+  method = "repeatedcv",
+  number = 5,
+  repeats = 2,
+  savePredictions = T
+  
 )
-fit <- train(has_figs ~ .,
-             data = training,
-             method = "rf",
-             trControl = ctrl,
-             # Paramter dla algorytmu uczącego
-             ntree = 10)
+fit <- train(
+  has_figs ~ .,
+  data = training,
+  method = "rf",
+  trControl = ctrl,
+  # Paramter dla algorytmu uczącego
+  ntree = 10
+)
 
 fit
 rfClasses <- predict(fit, newdata = testing)
 confusionMatrix(data = rfClasses, testing$has_figs, positive = 'TRUE')
 ```
 
-Ze względu na małą moc obliczniową mojego komputera oraz długi czas trwania uczenia, zdecydowałem się nie przeprowadzać dodatkowego strojenia (podjąłem takie próby ale ich czas podważył ich zasadność). 
+Ze względu na małą moc obliczeniową mojego komputera oraz długi czas trwania uczenia, zdecydowałem się nie przeprowadzać dodatkowego strojenia (podjąłem takie próby ale ich czas podważył ich zasadność).
 
-Nie mniej jednak, uważam że powyższy model osiągnął dobry wynik, nie dając się zwieść skrzywieniu danych. Wysokie *sensitivity* wskazuje na niewiele przypadków fałszywie pozytywnych (przyznanie figurki do zestawu, który nie powinien jej mieć). Wysokie *specificity* zapenia niewiel przypadków fałszywie negatywnych, czyli nieprzypisania figurki do zestawu. Ogólna trafność na poziomie ponad 90% oraz czułość i precyzja na poziomie ponad 90% dają stosunkowo wirygodny klasyfikator.
+Nie mniej jednak, uważam że powyższy model osiągnął dobry wynik, nie dając się zwieść skrzywieniu danych. Wysokie *sensitivity* wskazuje na niewiele przypadków fałszywie pozytywnych (przyznanie figurki do zestawu, który nie powinien jej mieć). Wysokie *specificity* zapewnia niewiele przypadków fałszywie negatywnych, czyli nieprzypisania figurki do zestawu. Ogólna trafność na poziomie ponad 90% oraz czułość i precyzja na poziomie ponad 90% dają stosunkowo wiarygodny klasyfikator.
 
-Powyższy klsyfikator może być używany do przewidywania, czy dany zestaw z przyszłości będzie zawierać figurki.
-
-
-
+Powyższy klasyfikator może być używany do przewidywania, czy dany zestaw z przyszłości będzie zawierać figurki.
